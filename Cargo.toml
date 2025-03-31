@@ -1,0 +1,8 @@
+[package]
+name = "simple-package-tracker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+glib = "0.20.9"
+gtk4 = "0.9.6"
