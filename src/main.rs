@@ -16,8 +16,10 @@ fn main() -> glib::ExitCode {
             .build();
 
         let vbox = Box::new(gtk4::Orientation::Vertical, 15);
-
-        let text_field = TextView::builder().bottom_margin(100).build();
+        let text_field = TextView::new();
+        let scroll_window = gtk::ScrolledWindow::builder()
+            .min_content_height(300)
+            .build();
 
         let text_field_cloned = text_field.clone();
         let tracking_label = Label::builder().build();
@@ -42,7 +44,8 @@ fn main() -> glib::ExitCode {
             println!("{}", tracking_number.join("\n"));
         });
 
-        vbox.append(&text_field);
+        scroll_window.set_child(Some(&text_field));
+        vbox.append(&scroll_window);
         vbox.append(&button);
         vbox.append(&tracking_label);
         window.set_child(Some(&vbox));
