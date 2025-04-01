@@ -1,5 +1,8 @@
 use gtk::prelude::*;
-use gtk::{glib, Application, ApplicationWindow, Box, Button, Label, TextView};
+use gtk::{
+    glib, Application, ApplicationWindow, Box, Button, HeaderBar, Label, Orientation,
+    ScrolledWindow, TextView,
+};
 use gtk4::{self as gtk};
 
 fn main() -> glib::ExitCode {
@@ -15,11 +18,11 @@ fn main() -> glib::ExitCode {
             .title("Simple Package Tracker")
             .build();
 
-        let vbox = Box::new(gtk4::Orientation::Vertical, 15);
+        let header_bar = HeaderBar::builder().name("Simple Package Tracker").build();
+
+        let vbox = Box::new(Orientation::Vertical, 15);
         let text_field = TextView::new();
-        let scroll_window = gtk::ScrolledWindow::builder()
-            .min_content_height(300)
-            .build();
+        let scroll_window = ScrolledWindow::builder().min_content_height(300).build();
 
         let text_field_cloned = text_field.clone();
         let tracking_label = Label::builder().build();
@@ -48,6 +51,7 @@ fn main() -> glib::ExitCode {
         vbox.append(&scroll_window);
         vbox.append(&button);
         vbox.append(&tracking_label);
+        window.set_titlebar(Some(&header_bar));
         window.set_child(Some(&vbox));
 
         window.present();
