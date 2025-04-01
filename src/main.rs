@@ -1,58 +1,62 @@
-use gtk::prelude::*;
-use gtk::{
-    glib, Application, ApplicationWindow, Box, Button, HeaderBar, Label, Orientation,
-    ScrolledWindow, TextView,
-};
-use gtk4::{self as gtk};
+use adw::gtk::glib;
+use adw::gtk::{Application, Box, Button, Label, Orientation, ScrolledWindow, TextView};
+use adw::prelude::*;
+use adw::{ApplicationWindow, HeaderBar};
 
 fn main() -> glib::ExitCode {
     let app = Application::builder()
         .application_id("org.spt.simplepackagetracker")
         .build();
 
+    app.connect_startup(|_| {
+        adw::init().expect("Failed to initialize libadwaita");
+    });
+
     app.connect_activate(|app| {
+        let header = HeaderBar::builder()
+            .title_widget(&adw::WindowTitle::new("Simple Package Tracker", ""))
+            .show_end_title_buttons(true)
+            .build();
+
+        let text_field = TextView::new();
+        let scroll_window = ScrolledWindow::builder()
+            .min_content_height(300)
+            .child(&text_field)
+            .build();
+
+        let tracking_label = Label::new(None);
+        let text_field_cloned = text_field.clone();
+        let tracking_label_cloned = tracking_label.clone();
+
+        let button = Button::with_label("Track");
+        button.connect_clicked(move |_| {
+            let tf_buff = text_field_cloned.buffer();
+            let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
+            let mut results = Vec::new();
+
+            for line in text.lines() {
+                let is_valid = line.trim().chars().all(|c| c.is_ascii_digit()) && !line.is_empty();
+                if is_valid {
+                    results.push(format!("Tracking: {}", line));
+                }
+            }
+
+            tracking_label_cloned.set_text(&results.join("\n"));
+            println!("{}", results.join("\n"));
+        });
+
+        let content = Box::new(Orientation::Vertical, 15);
+        content.append(&header);
+        content.append(&scroll_window);
+        content.append(&button);
+        content.append(&tracking_label);
+
         let window = ApplicationWindow::builder()
             .application(app)
             .default_width(800)
             .default_height(600)
-            .title("Simple Package Tracker")
+            .content(&content)
             .build();
-
-        let header_bar = HeaderBar::builder().name("Simple Package Tracker").build();
-
-        let vbox = Box::new(Orientation::Vertical, 15);
-        let text_field = TextView::new();
-        let scroll_window = ScrolledWindow::builder().min_content_height(300).build();
-
-        let text_field_cloned = text_field.clone();
-        let tracking_label = Label::builder().build();
-        let tracking_label_cloned = tracking_label.clone();
-        let button = Button::with_label("Track");
-
-        button.connect_clicked(move |_| {
-            let tf_buff = text_field_cloned.buffer();
-            let text_field_output = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
-            let mut tracking_number = Vec::new();
-            for line in text_field_output.lines() {
-                let is_clean: bool =
-                    line.trim().chars().all(|c| c.is_ascii_digit()) && !line.is_empty();
-                if !is_clean {
-                    continue;
-                }
-
-                let message = format!("Tracking: {}", line);
-                tracking_number.push(message);
-            }
-            tracking_label_cloned.set_text(&tracking_number.join("\n"));
-            println!("{}", tracking_number.join("\n"));
-        });
-
-        scroll_window.set_child(Some(&text_field));
-        vbox.append(&scroll_window);
-        vbox.append(&button);
-        vbox.append(&tracking_label);
-        window.set_titlebar(Some(&header_bar));
-        window.set_child(Some(&vbox));
 
         window.present();
     });
