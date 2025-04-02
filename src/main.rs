@@ -1,6 +1,7 @@
 use adw::gtk::glib;
 use adw::gtk::{Application, TextView};
 use adw::prelude::*;
+mod api;
 mod ui;
 use ui::{
     header::create_header, input::create_input_area, layout::create_main_content,
