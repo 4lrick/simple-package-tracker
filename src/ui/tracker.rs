@@ -1,5 +1,5 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
-use adw::gtk::{Button, ListBox, TextView};
+use adw::gtk::{Box, Button, Label, ListBox, Orientation, TextView};
 use adw::{prelude::*, HeaderBar, NavigationView, ToolbarView};
 use adw::{ActionRow, NavigationPage};
 
@@ -16,8 +16,43 @@ pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
         println!("Clicked on button");
     });
 
+    let details = Box::new(Orientation::Vertical, 6);
+
+    details.append(&Label::new(Some(&format!("ID: {}", &info.id_ship))));
+    details.append(&Label::new(Some(&format!(
+        "Type of tracking: {}",
+        &info.product
+    ))));
+
+    for event in &info.events {
+        details.append(&Label::new(Some(&format!(
+            "Event on {}: {}",
+            event.date, event.label
+        ))));
+    }
+
+    if !info.timeline.is_empty() {
+        details.append(&Label::new(Some("Timeline steps:")));
+        for step in &info.timeline {
+            let date_str = if step.date.is_empty() {
+                "".to_string()
+            } else {
+                format!(" on {}", step.date)
+            };
+
+            let label = format!(
+                "- {} - {} - {} (Status: {})",
+                step.short_label,
+                step.long_label,
+                date_str,
+                if step.status { "✔" } else { "✘" }
+            );
+            details.append(&Label::new(Some(&label)));
+        }
+    }
+
+    toolbar.set_content(Some(&details));
     toolbar.add_top_bar(&header);
-    toolbar.set_content(Some(&button));
     nav_page.set_child(Some(&toolbar));
 
     return nav_page;

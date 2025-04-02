@@ -13,18 +13,39 @@ pub struct Shipment {
     pub id_ship: String,
     #[serde(default)]
     pub event: Vec<Event>,
+    #[serde(default)]
+    pub product: String,
+    #[serde(default)]
+    pub timeline: Vec<Timeline>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Event {
     #[serde(default)]
     pub label: String,
+    #[serde(default)]
+    pub date: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Timeline {
+    #[serde(rename = "shortLabel")]
+    pub short_label: String,
+    #[serde(rename = "longLabel")]
+    pub long_label: String,
+    #[serde(default)]
+    pub date: String,
+    #[serde(default)]
+    pub status: bool,
 }
 
 #[derive(Debug)]
 pub struct TrackingInfo {
     pub id_ship: String,
     pub label: String,
+    pub product: String,
+    pub events: Vec<Event>,
+    pub timeline: Vec<Timeline>,
 }
 
 fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
@@ -35,6 +56,9 @@ fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
     Some(TrackingInfo {
         id_ship: shipment.id_ship.clone(),
         label: latest.label.clone(),
+        product: shipment.product.clone(),
+        events: shipment.event,
+        timeline: shipment.timeline,
     })
 }
 
@@ -47,12 +71,18 @@ pub fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
             Ok(None) => results.push(TrackingInfo {
                 id_ship: number.to_string(),
                 label: "No data for this package".to_string(),
+                product: "Unknown".to_string(),
+                events: Vec::new(),
+                timeline: Vec::new(),
             }),
             Err(e) => {
                 eprintln!("API Error {}: {}", number, e);
                 results.push(TrackingInfo {
                     id_ship: number.to_string(),
                     label: "Error: ".to_string() + &e.to_string(),
+                    product: "Unknown".to_string(),
+                    events: Vec::new(),
+                    timeline: Vec::new(),
                 });
             }
         }
