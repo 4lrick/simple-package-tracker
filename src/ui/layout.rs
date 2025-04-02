@@ -1,17 +1,17 @@
-use adw::gtk::{Application, Box, Button, Label, Orientation, ScrolledWindow};
+use adw::gtk::{Application, Box, Button, Orientation, ScrolledWindow};
 use adw::{prelude::*, ApplicationWindow, HeaderBar};
 
 pub fn create_main_content(
     header: HeaderBar,
     scroll_window: ScrolledWindow,
     button: Button,
-    tracking_label: Label,
+    package_rows: Box,
 ) -> Box {
     let content = Box::new(Orientation::Vertical, 15);
     content.append(&header);
     content.append(&scroll_window);
     content.append(&button);
-    content.append(&tracking_label);
+    content.append(&package_rows);
 
     return content;
 }

@@ -9,6 +9,8 @@ pub struct ApiResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct Shipment {
+    #[serde(rename = "idShip")]
+    pub id_ship: String,
     #[serde(default)]
     pub event: Vec<Event>,
 }
@@ -17,28 +19,41 @@ pub struct Shipment {
 pub struct Event {
     #[serde(default)]
     pub label: String,
-    #[serde(default)]
-    pub date: String,
 }
 
-fn parse_tracking_info(json: &str) -> Option<String> {
+#[derive(Debug)]
+pub struct TrackingInfo {
+    pub id_ship: String,
+    pub label: String,
+}
+
+fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
     let api_response: ApiResponse = serde_json::from_str(json).ok()?;
     let shipment = api_response.shipment?;
     let latest = shipment.event.first()?;
 
-    Some(format!("{}\n{}", latest.label, latest.date))
+    Some(TrackingInfo {
+        id_ship: shipment.id_ship.clone(),
+        label: latest.label.clone(),
+    })
 }
 
-pub fn process_tracking_numbers(input: &str) -> Vec<String> {
+pub fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
     let mut results = Vec::new();
 
     for number in input.lines().map(str::trim).filter(|l| !l.is_empty()) {
         match fetch_tracking_info(number).map(|body| parse_tracking_info(&body)) {
-            Ok(Some(parsed)) => results.push(parsed),
-            Ok(None) => results.push(format!("No data for {}", number)),
+            Ok(Some(info)) => results.push(info),
+            Ok(None) => results.push(TrackingInfo {
+                id_ship: number.to_string(),
+                label: "No data for this package".to_string(),
+            }),
             Err(e) => {
                 eprintln!("API Error {}: {}", number, e);
-                results.push(format!("Error for {}", number));
+                results.push(TrackingInfo {
+                    id_ship: number.to_string(),
+                    label: "Error: ".to_string() + &e.to_string(),
+                });
             }
         }
     }

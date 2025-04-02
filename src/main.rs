@@ -21,8 +21,8 @@ fn main() -> glib::ExitCode {
         let header = create_header();
         let text_field = TextView::new();
         let scroll_window = create_input_area(text_field.clone());
-        let (button, tracking_label) = create_tracking_area(text_field);
-        let content = create_main_content(header, scroll_window, button, tracking_label);
+        let (button, package_rows) = create_tracking_area(text_field);
+        let content = create_main_content(header, scroll_window, button, package_rows);
         let window = create_main_window(app.clone(), content);
 
         window.present();
