@@ -15,6 +15,18 @@ pub fn create_package_rows(input: &str) -> Vec<ActionRow> {
                 .activatable(true)
                 .build();
 
+            let delete_btn = Button::builder().icon_name("user-trash-symbolic").build();
+            let package_clone = package.clone();
+            delete_btn.connect_clicked(move |_| {
+                if let Some(parent) = package_clone.parent() {
+                    if let Some(box_container) = parent.downcast_ref::<Box>() {
+                        box_container.remove(&package_clone);
+                    }
+                }
+            });
+
+            package.add_suffix(&delete_btn);
+
             return package;
         })
         .collect()
