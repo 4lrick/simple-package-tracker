@@ -1,9 +1,29 @@
-use crate::api::process_tracking_numbers;
-use adw::gtk::{Box, Button, Orientation, TextView};
-use adw::prelude::*;
-use adw::ActionRow;
+use crate::api::{process_tracking_numbers, TrackingInfo};
+use adw::gtk::{Button, ListBox, TextView};
+use adw::{prelude::*, HeaderBar, NavigationView, ToolbarView};
+use adw::{ActionRow, NavigationPage};
 
-pub fn create_package_rows(input: &str) -> Vec<ActionRow> {
+pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
+    let nav_page = NavigationPage::builder()
+        .title("Package Details")
+        .tag(&info.id_ship)
+        .build();
+
+    let toolbar = ToolbarView::new();
+    let header = HeaderBar::new();
+    let button = Button::builder().label("Testing Button").build();
+    button.connect_clicked(move |_| {
+        println!("Clicked on button");
+    });
+
+    toolbar.add_top_bar(&header);
+    toolbar.set_content(Some(&button));
+    nav_page.set_child(Some(&toolbar));
+
+    return nav_page;
+}
+
+pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<ActionRow> {
     let infos = process_tracking_numbers(input);
 
     infos
@@ -19,10 +39,17 @@ pub fn create_package_rows(input: &str) -> Vec<ActionRow> {
             let package_clone = package.clone();
             delete_btn.connect_clicked(move |_| {
                 if let Some(parent) = package_clone.parent() {
-                    if let Some(box_container) = parent.downcast_ref::<Box>() {
+                    if let Some(box_container) = parent.downcast_ref::<ListBox>() {
                         box_container.remove(&package_clone);
                     }
                 }
+            });
+
+            let nav_view_clone = nav_view.clone();
+            let nav_page_clone = create_details_page(&info);
+            package.connect_activated(move |_| {
+                println!("Clicked on package: {}", info.id_ship);
+                nav_view_clone.push(&nav_page_clone);
             });
 
             package.add_suffix(&delete_btn);
@@ -32,9 +59,9 @@ pub fn create_package_rows(input: &str) -> Vec<ActionRow> {
         .collect()
 }
 
-pub fn create_tracking_area(text_field: TextView) -> (Button, Box) {
+pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (Button, ListBox) {
     let text_field_cloned = text_field.clone();
-    let package_rows = Box::new(Orientation::Vertical, 6);
+    let package_rows = ListBox::new();
     let package_rows_cloned = package_rows.clone();
 
     let button = Button::with_label("Track");
@@ -42,7 +69,7 @@ pub fn create_tracking_area(text_field: TextView) -> (Button, Box) {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
 
-        for package in create_package_rows(&text) {
+        for package in create_package_rows(&text, &nav_view) {
             package_rows_cloned.append(&package);
         }
     });

@@ -1,6 +1,6 @@
 use adw::gtk::glib;
 use adw::gtk::{Application, TextView};
-use adw::prelude::*;
+use adw::{prelude::*, NavigationPage, NavigationView};
 mod api;
 mod ui;
 use ui::{
@@ -20,11 +20,14 @@ fn main() -> glib::ExitCode {
     app.connect_activate(|app| {
         let header = create_header();
         let text_field = TextView::new();
+        let nav_view = NavigationView::new();
         let scroll_window = create_input_area(text_field.clone());
-        let (button, package_rows) = create_tracking_area(text_field);
+        let (button, package_rows) = create_tracking_area(text_field, nav_view.clone());
         let content = create_main_content(header, scroll_window, button, package_rows);
-        let window = create_main_window(app.clone(), content);
+        let root_page = NavigationPage::builder().child(&content).build();
+        let window = create_main_window(app.clone(), nav_view.clone());
 
+        nav_view.push(&root_page);
         window.present();
     });
 
