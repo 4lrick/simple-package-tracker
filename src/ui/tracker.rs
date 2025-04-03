@@ -1,7 +1,9 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
-use adw::gtk::{Align, Box, Button, Label, ListBox, Orientation, TextView};
-use adw::{prelude::*, HeaderBar, NavigationView, ToolbarView};
-use adw::{ActionRow, NavigationPage};
+use adw::{
+    gtk::{Align, Box, Button, Label, ListBox, ListBoxRow, Orientation, TextView, ToggleButton},
+    prelude::*,
+    ActionRow, HeaderBar, NavigationPage, NavigationView, StatusPage, ToolbarView,
+};
 
 pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
     let nav_page = NavigationPage::builder()
@@ -68,9 +70,14 @@ pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<Action
                 .title(&info.id_ship)
                 .subtitle(&info.label)
                 .activatable(true)
+                .css_classes(vec!["property"])
                 .build();
 
-            let delete_btn = Button::builder().icon_name("user-trash-symbolic").build();
+            let delete_btn = ToggleButton::builder()
+                .icon_name("user-trash-symbolic")
+                .valign(Align::Center)
+                .build();
+
             let package_clone = package.clone();
             delete_btn.connect_clicked(move |_| {
                 if let Some(parent) = package_clone.parent() {
@@ -83,12 +90,10 @@ pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<Action
             let nav_view_clone = nav_view.clone();
             let nav_page_clone = create_details_page(&info);
             package.connect_activated(move |_| {
-                println!("Clicked on package: {}", info.id_ship);
                 nav_view_clone.push(&nav_page_clone);
             });
 
             package.add_suffix(&delete_btn);
-
             return package;
         })
         .collect()
@@ -96,8 +101,23 @@ pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<Action
 
 pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (Button, ListBox) {
     let text_field_cloned = text_field.clone();
-    let package_rows = ListBox::new();
-    let package_rows_cloned = package_rows.clone();
+    let package_rows = ListBox::builder()
+        .css_classes(vec!["boxed-list"])
+        .height_request(240)
+        .build();
+
+    let tracked_package_title = StatusPage::builder()
+        .title("Tracked Package(s):")
+        .height_request(120)
+        .build();
+
+    let title_row = ListBoxRow::builder()
+        .child(&tracked_package_title)
+        .activatable(false)
+        .selectable(false)
+        .can_focus(false)
+        .build();
+
     let track_button = Button::builder()
         .label("Track")
         .width_request(200)
@@ -106,6 +126,7 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["suggested-action", "pill"])
         .build();
 
+    let package_rows_cloned = package_rows.clone();
     track_button.connect_clicked(move |_| {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
@@ -115,5 +136,6 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         }
     });
 
+    package_rows.append(&title_row);
     return (track_button, package_rows);
 }

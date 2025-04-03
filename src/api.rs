@@ -51,11 +51,17 @@ pub struct TrackingInfo {
 fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
     let api_response: ApiResponse = serde_json::from_str(json).ok()?;
     let shipment = api_response.shipment?;
-    let latest = shipment.event.first()?;
+    let latest = shipment
+        .timeline
+        .iter()
+        .filter(|t| !t.short_label.is_empty())
+        .last()
+        .map(|t| t.short_label.clone())
+        .unwrap_or_else(|| "No data for this package".to_string());
 
     Some(TrackingInfo {
         id_ship: shipment.id_ship.clone(),
-        label: latest.label.clone(),
+        label: latest,
         product: shipment.product.clone(),
         events: shipment.event,
         timeline: shipment.timeline,
