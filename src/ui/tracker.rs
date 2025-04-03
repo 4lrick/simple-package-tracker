@@ -98,7 +98,7 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
     let text_field_cloned = text_field.clone();
     let package_rows = ListBox::new();
     let package_rows_cloned = package_rows.clone();
-    let button = Button::builder()
+    let track_button = Button::builder()
         .label("Track")
         .width_request(200)
         .height_request(25)
@@ -106,7 +106,7 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["suggested-action", "pill"])
         .build();
 
-    button.connect_clicked(move |_| {
+    track_button.connect_clicked(move |_| {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
 
@@ -115,5 +115,5 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         }
     });
 
-    return (button, package_rows);
+    return (track_button, package_rows);
 }

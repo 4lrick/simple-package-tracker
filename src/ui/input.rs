@@ -1,10 +1,21 @@
-use adw::gtk::{ScrolledWindow, TextView};
+use adw::gtk::{Frame, ScrolledWindow, TextView, WrapMode};
 
-pub fn create_input_area(text_field: TextView) -> ScrolledWindow {
-    let scroll_window = ScrolledWindow::builder()
-        .min_content_height(300)
-        .child(&text_field)
+pub fn create_input_area() -> (Frame, TextView) {
+    let text_field = TextView::builder()
+        .bottom_margin(12)
+        .left_margin(12)
+        .right_margin(12)
+        .top_margin(12)
+        .wrap_mode(WrapMode::Char)
         .build();
 
-    return scroll_window;
+    let scroll_window = ScrolledWindow::builder()
+        .child(&text_field)
+        .height_request(180)
+        .width_request(600)
+        .build();
+
+    let frame = Frame::builder().child(&scroll_window).build();
+
+    return (frame, text_field);
 }
