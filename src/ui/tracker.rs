@@ -63,7 +63,12 @@ pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
     return nav_page;
 }
 
-pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<ActionRow> {
+pub fn create_package_rows(
+    input: &str,
+    nav_view: &NavigationView,
+    frame: &Frame,
+    no_package_title: &StatusPage,
+) -> Vec<ActionRow> {
     let infos = process_tracking_numbers(input);
 
     infos
@@ -82,10 +87,16 @@ pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<Action
                 .build();
 
             let package_clone = package.clone();
+            let frame_clone = frame.clone();
+            let no_title_clone = no_package_title.clone();
+
             delete_btn.connect_clicked(move |_| {
                 if let Some(parent) = package_clone.parent() {
                     if let Some(box_container) = parent.downcast_ref::<ListBox>() {
                         box_container.remove(&package_clone);
+                        if box_container.first_child().is_none() {
+                            frame_clone.set_child(Some(&no_title_clone));
+                        }
                     }
                 }
             });
@@ -106,27 +117,6 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
     let text_field_cloned = text_field.clone();
     let package_rows = ListBox::builder().css_classes(vec!["boxed-list"]).build();
 
-    let scrolled_window = ScrolledWindow::builder()
-        .child(&package_rows)
-        .height_request(480)
-        .vexpand(false)
-        .build();
-
-    let tracked_package_title = StatusPage::builder()
-        .title("Tracked Package(s):")
-        .vexpand(false)
-        .build();
-
-    let layout = Box::builder()
-        .orientation(Orientation::Vertical)
-        .spacing(12)
-        .build();
-
-    let frame = Frame::builder()
-        .child(&scrolled_window)
-        .css_classes(vec!["boxed-list"])
-        .build();
-
     let track_button = Button::builder()
         .label("Track")
         .width_request(200)
@@ -135,18 +125,52 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["suggested-action", "pill"])
         .build();
 
+    let tracked_package_title = StatusPage::builder()
+        .title("Tracked Package(s):")
+        .vexpand(false)
+        .build();
+
+    let no_package_title = StatusPage::builder()
+        .title("No tracked packages")
+        .description("Enter one or more tracking numbers.")
+        .icon_name("system-search-symbolic")
+        .height_request(440)
+        .build();
+
+    let scrolled_window = ScrolledWindow::builder()
+        .child(&package_rows)
+        .height_request(440)
+        .vexpand(false)
+        .build();
+
+    let frame = Frame::builder()
+        .child(&no_package_title)
+        .css_classes(vec!["boxed-list"])
+        .build();
+
+    let package_area = Box::builder()
+        .orientation(Orientation::Vertical)
+        .spacing(12)
+        .build();
+
     let package_rows_cloned = package_rows.clone();
+    let frame_cloned = frame.clone();
     track_button.connect_clicked(move |_| {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
+        let packages = create_package_rows(&text, &nav_view, &frame_cloned, &no_package_title);
 
-        for package in create_package_rows(&text, &nav_view) {
-            package_rows_cloned.append(&package);
+        if !packages.is_empty() {
+            frame_cloned.set_child(Some(&scrolled_window));
+
+            for package in packages {
+                package_rows_cloned.append(&package);
+            }
         }
     });
 
-    layout.append(&tracked_package_title);
-    layout.append(&frame);
+    package_area.append(&tracked_package_title);
+    package_area.append(&frame);
 
-    return (track_button, layout);
+    return (track_button, package_area);
 }
