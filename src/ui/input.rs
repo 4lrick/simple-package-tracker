@@ -7,6 +7,7 @@ pub fn create_input_area() -> (Frame, TextView) {
         .right_margin(12)
         .top_margin(12)
         .wrap_mode(WrapMode::Char)
+        .accepts_tab(false)
         .build();
 
     let scroll_window = ScrolledWindow::builder()
