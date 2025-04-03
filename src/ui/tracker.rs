@@ -17,10 +17,6 @@ pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
 
     let toolbar = ToolbarView::new();
     let header = HeaderBar::new();
-    let button = Button::builder().label("Testing Button").build();
-    button.connect_clicked(move |_| {
-        println!("Clicked on button");
-    });
 
     let details = Box::new(Orientation::Vertical, 6);
 
@@ -182,13 +178,27 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
     track_button.connect_clicked(move |_| {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
-        let packages = create_package_rows(&text, &nav_view, &frame_cloned, &no_package_title);
+        let new_rows = create_package_rows(&text, &nav_view, &frame_cloned, &no_package_title);
 
-        if !packages.is_empty() {
+        if !new_rows.is_empty() {
             frame_cloned.set_child(Some(&scrolled_window));
 
-            for package in packages {
-                package_rows_cloned.append(&package);
+            for new_row in new_rows {
+                let mut exists = false;
+                let mut row_opt = package_rows_cloned.first_child();
+
+                while let Some(row) = row_opt {
+                    if let Some(row) = row.downcast_ref::<ActionRow>() {
+                        if row.title() == new_row.title() {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    row_opt = row.next_sibling();
+                }
+                if !exists {
+                    package_rows_cloned.append(&new_row);
+                }
             }
         }
     });
