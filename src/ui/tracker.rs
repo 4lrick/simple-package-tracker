@@ -186,11 +186,13 @@ pub fn create_package_rows(
                 }
             });
 
-            let nav_view_clone = nav_view.clone();
-            let nav_page_clone = create_details_page(&info);
-            package.connect_activated(move |_| {
-                nav_view_clone.push(&nav_page_clone);
-            });
+            if info.label != "No data for this package" {
+                let nav_view_clone = nav_view.clone();
+                let nav_page_clone = create_details_page(&info);
+                package.connect_activated(move |_| {
+                    nav_view_clone.push(&nav_page_clone);
+                });
+            }
 
             package.add_suffix(&delete_btn);
             return package;

@@ -31,10 +31,6 @@ pub struct Event {
 pub struct Timeline {
     #[serde(rename = "shortLabel")]
     pub short_label: String,
-    #[serde(rename = "longLabel")]
-    pub long_label: String,
-    #[serde(default)]
-    pub date: String,
     #[serde(default)]
     pub status: bool,
 }
