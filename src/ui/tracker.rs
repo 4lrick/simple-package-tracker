@@ -1,5 +1,5 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
-use adw::gtk::{Box, Button, Label, ListBox, Orientation, TextView};
+use adw::gtk::{Align, Box, Button, Label, ListBox, Orientation, TextView};
 use adw::{prelude::*, HeaderBar, NavigationView, ToolbarView};
 use adw::{ActionRow, NavigationPage};
 
@@ -98,8 +98,14 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
     let text_field_cloned = text_field.clone();
     let package_rows = ListBox::new();
     let package_rows_cloned = package_rows.clone();
+    let button = Button::builder()
+        .label("Track")
+        .width_request(200)
+        .height_request(25)
+        .halign(Align::Center)
+        .css_classes(vec!["suggested-action", "pill"])
+        .build();
 
-    let button = Button::with_label("Track");
     button.connect_clicked(move |_| {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);

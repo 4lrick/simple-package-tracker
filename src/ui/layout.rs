@@ -8,10 +8,17 @@ pub fn create_main_content(
     package_rows: ListBox,
 ) -> Box {
     let content = Box::new(Orientation::Vertical, 15);
+    let main_components = Box::builder()
+        .orientation(Orientation::Vertical)
+        .spacing(15)
+        .build();
+
+    main_components.append(&scroll_window);
+    main_components.append(&button);
+    main_components.append(&package_rows);
+
     content.append(&header);
-    content.append(&scroll_window);
-    content.append(&button);
-    content.append(&package_rows);
+    content.append(&main_components);
 
     return content;
 }
