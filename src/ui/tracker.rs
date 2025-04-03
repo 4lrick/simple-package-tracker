@@ -5,7 +5,8 @@ use adw::{
         ToggleButton,
     },
     prelude::*,
-    ActionRow, HeaderBar, NavigationPage, NavigationView, StatusPage, ToolbarView,
+    ActionRow, AlertDialog, HeaderBar, NavigationPage, NavigationView, ResponseAppearance,
+    StatusPage, ToolbarView,
 };
 
 pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
@@ -86,6 +87,16 @@ pub fn create_package_rows(
                 .valign(Align::Center)
                 .build();
 
+            let delete_dialog = AlertDialog::builder()
+                .heading("Delete?")
+                .body("Are you sure you want to remove this number from the list?")
+                .close_response("cancel")
+                .build();
+
+            delete_dialog.add_response("cancel", "Cancel");
+            delete_dialog.add_response("remove", "Remove");
+            delete_dialog.set_response_appearance("remove", ResponseAppearance::Destructive);
+
             let package_clone = package.clone();
             let frame_clone = frame.clone();
             let no_title_clone = no_package_title.clone();
@@ -93,10 +104,23 @@ pub fn create_package_rows(
             delete_btn.connect_clicked(move |_| {
                 if let Some(parent) = package_clone.parent() {
                     if let Some(box_container) = parent.downcast_ref::<ListBox>() {
-                        box_container.remove(&package_clone);
-                        if box_container.first_child().is_none() {
-                            frame_clone.set_child(Some(&no_title_clone));
-                        }
+                        let box_container_clone = box_container.clone();
+                        let package_clone = package_clone.clone();
+                        let package_clone2 = package_clone.clone();
+                        let frame_clone = frame_clone.clone();
+                        let no_title_clone = no_title_clone.clone();
+
+                        delete_dialog.connect_response(None, move |dialog, response| {
+                            if response == "remove" {
+                                box_container_clone.remove(&package_clone);
+                                if box_container_clone.first_child().is_none() {
+                                    frame_clone.set_child(Some(&no_title_clone));
+                                }
+                            }
+                            dialog.close();
+                        });
+
+                        delete_dialog.present(Some(&package_clone2));
                     }
                 }
             });
