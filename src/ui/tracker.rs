@@ -1,6 +1,9 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
 use adw::{
-    gtk::{Align, Box, Button, Label, ListBox, ListBoxRow, Orientation, TextView, ToggleButton},
+    gtk::{
+        Align, Box, Button, Frame, Label, ListBox, Orientation, ScrolledWindow, TextView,
+        ToggleButton,
+    },
     prelude::*,
     ActionRow, HeaderBar, NavigationPage, NavigationView, StatusPage, ToolbarView,
 };
@@ -99,23 +102,29 @@ pub fn create_package_rows(input: &str, nav_view: &NavigationView) -> Vec<Action
         .collect()
 }
 
-pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (Button, ListBox) {
+pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (Button, Box) {
     let text_field_cloned = text_field.clone();
-    let package_rows = ListBox::builder()
-        .css_classes(vec!["boxed-list"])
-        .height_request(240)
+    let package_rows = ListBox::builder().css_classes(vec!["boxed-list"]).build();
+
+    let scrolled_window = ScrolledWindow::builder()
+        .child(&package_rows)
+        .height_request(480)
+        .vexpand(false)
         .build();
 
     let tracked_package_title = StatusPage::builder()
         .title("Tracked Package(s):")
-        .height_request(120)
+        .vexpand(false)
         .build();
 
-    let title_row = ListBoxRow::builder()
-        .child(&tracked_package_title)
-        .activatable(false)
-        .selectable(false)
-        .can_focus(false)
+    let layout = Box::builder()
+        .orientation(Orientation::Vertical)
+        .spacing(12)
+        .build();
+
+    let frame = Frame::builder()
+        .child(&scrolled_window)
+        .css_classes(vec!["boxed-list"])
         .build();
 
     let track_button = Button::builder()
@@ -136,6 +145,8 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         }
     });
 
-    package_rows.append(&title_row);
-    return (track_button, package_rows);
+    layout.append(&tracked_package_title);
+    layout.append(&frame);
+
+    return (track_button, layout);
 }

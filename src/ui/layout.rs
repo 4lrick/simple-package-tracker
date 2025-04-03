@@ -1,11 +1,11 @@
-use adw::gtk::{Align, Application, Box, Button, Frame, ListBox, Orientation};
+use adw::gtk::{Align, Application, Box, Button, Frame, Orientation};
 use adw::{prelude::*, ApplicationWindow, HeaderBar};
 
 pub fn create_main_content(
     header: HeaderBar,
     tracking_input_window: Frame,
     track_button: Button,
-    package_rows: ListBox,
+    package_rows: Box,
 ) -> Box {
     let content = Box::new(Orientation::Vertical, 15);
     let main_components = Box::builder()
