@@ -145,9 +145,10 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["suggested-action", "pill"])
         .build();
 
-    let tracked_package_title = StatusPage::builder()
-        .title("Tracked Package(s):")
-        .vexpand(false)
+    let tracked_package_title = Label::builder()
+        .css_classes(vec!["title-1"])
+        .label("Tracked Package(s):")
+        .margin_bottom(50)
         .build();
 
     let no_package_title = StatusPage::builder()
@@ -170,7 +171,7 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
 
     let package_area = Box::builder()
         .orientation(Orientation::Vertical)
-        .spacing(12)
+        .margin_top(70)
         .build();
 
     let package_rows_cloned = package_rows.clone();
