@@ -1,4 +1,4 @@
-use adw::gtk::{Align, Application, Box, Button, Frame, Orientation};
+use adw::gtk::{Align, Application, Box, Button, Frame, Orientation, PolicyType, ScrolledWindow};
 use adw::{prelude::*, ApplicationWindow, HeaderBar};
 
 pub fn create_main_content(
@@ -12,6 +12,16 @@ pub fn create_main_content(
         .orientation(Orientation::Vertical)
         .halign(Align::Center)
         .spacing(50)
+        .margin_start(20)
+        .margin_end(20)
+        .margin_top(20)
+        .margin_bottom(20)
+        .build();
+
+    let scrolled_window = ScrolledWindow::builder()
+        .hscrollbar_policy(PolicyType::Never)
+        .vexpand(true)
+        .child(&main_components)
         .build();
 
     main_components.append(&tracking_input_window);
@@ -19,7 +29,7 @@ pub fn create_main_content(
     main_components.append(&package_rows);
 
     content.append(&header);
-    content.append(&main_components);
+    content.append(&scrolled_window);
 
     return content;
 }

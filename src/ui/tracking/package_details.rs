@@ -1,6 +1,9 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
 use adw::{
-    gtk::{Align, Box, Button, Label, ListBox, Orientation, ProgressBar, Separator},
+    gtk::{
+        Align, Box, Button, Label, ListBox, Orientation, PolicyType, ProgressBar, ScrolledWindow,
+        Separator,
+    },
     prelude::*,
     ActionRow, HeaderBar, NavigationPage, ToolbarView,
 };
@@ -41,7 +44,7 @@ pub fn create_events_history(info: &TrackingInfo, events_box: Box) -> Box {
     return events_box;
 }
 
-fn create_details_content(info: &TrackingInfo) -> Box {
+fn create_details_content(info: &TrackingInfo) -> ScrolledWindow {
     let details = Box::builder()
         .orientation(Orientation::Vertical)
         .halign(Align::Center)
@@ -112,7 +115,13 @@ fn create_details_content(info: &TrackingInfo) -> Box {
     details.append(&progress_bar);
     details.append(&events_box);
 
-    return details;
+    let scrolled_window = ScrolledWindow::builder()
+        .hscrollbar_policy(PolicyType::Never)
+        .vexpand(true)
+        .child(&details)
+        .build();
+
+    return scrolled_window;
 }
 
 fn create_header(info: &TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
