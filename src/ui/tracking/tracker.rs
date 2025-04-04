@@ -1,5 +1,6 @@
 use super::package_details::create_details_page;
 use crate::api::process_tracking_numbers;
+use crate::storage::{load_tracking_numbers, save_tracking_numbers};
 use adw::{
     gtk::{
         Align, Box, Button, Frame, Label, ListBox, Orientation, ScrolledWindow, TextView,
@@ -9,13 +10,72 @@ use adw::{
     ActionRow, AlertDialog, NavigationView, ResponseAppearance, StatusPage,
 };
 
-pub fn create_package_rows(
+fn handle_delete_numbers(
+    package: &ActionRow,
+    frame: &Frame,
+    no_package_title: &StatusPage,
+) -> AlertDialog {
+    let delete_dialog = AlertDialog::builder()
+        .heading("Delete?")
+        .body("Are you sure you want to remove this number from the list?")
+        .close_response("cancel")
+        .build();
+
+    delete_dialog.add_response("cancel", "Cancel");
+    delete_dialog.add_response("remove", "Remove");
+    delete_dialog.set_response_appearance("remove", ResponseAppearance::Destructive);
+
+    if let Some(parent) = package.parent() {
+        if let Some(box_container) = parent.downcast_ref::<ListBox>() {
+            let box_container_clone = box_container.clone();
+            let package_clone = package.clone();
+            let frame_clone = frame.clone();
+            let no_title_clone = no_package_title.clone();
+
+            delete_dialog.connect_response(None, move |dialog, response| {
+                if response == "remove" {
+                    box_container_clone.remove(&package_clone);
+                    let mut remaining_numbers = Vec::new();
+                    let mut row_opt = box_container_clone.first_child();
+
+                    while let Some(row) = row_opt {
+                        if let Some(row) = row.downcast_ref::<ActionRow>() {
+                            remaining_numbers.push(row.title().to_string());
+                        }
+                        row_opt = row.next_sibling();
+                    }
+                    let _ = save_tracking_numbers(&remaining_numbers);
+
+                    if box_container_clone.first_child().is_none() {
+                        frame_clone.set_child(Some(&no_title_clone));
+                    }
+                }
+                dialog.close();
+            });
+        }
+    }
+
+    return delete_dialog;
+}
+
+fn create_package_rows(
     input: &str,
     nav_view: &NavigationView,
     frame: &Frame,
     no_package_title: &StatusPage,
 ) -> Vec<ActionRow> {
-    let infos = process_tracking_numbers(input);
+    let numbers = if !input.is_empty() {
+        input
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(String::from)
+            .collect::<Vec<_>>()
+    } else {
+        load_tracking_numbers()
+    };
+
+    let infos = process_tracking_numbers(&numbers.join("\n"));
 
     infos
         .into_iter()
@@ -33,42 +93,14 @@ pub fn create_package_rows(
                 .valign(Align::Center)
                 .build();
 
-            let delete_dialog = AlertDialog::builder()
-                .heading("Delete?")
-                .body("Are you sure you want to remove this number from the list?")
-                .close_response("cancel")
-                .build();
-
-            delete_dialog.add_response("cancel", "Cancel");
-            delete_dialog.add_response("remove", "Remove");
-            delete_dialog.set_response_appearance("remove", ResponseAppearance::Destructive);
-
             let package_clone = package.clone();
             let frame_clone = frame.clone();
             let no_title_clone = no_package_title.clone();
 
             delete_btn.connect_clicked(move |_| {
-                if let Some(parent) = package_clone.parent() {
-                    if let Some(box_container) = parent.downcast_ref::<ListBox>() {
-                        let box_container_clone = box_container.clone();
-                        let package_clone = package_clone.clone();
-                        let package_clone2 = package_clone.clone();
-                        let frame_clone = frame_clone.clone();
-                        let no_title_clone = no_title_clone.clone();
-
-                        delete_dialog.connect_response(None, move |dialog, response| {
-                            if response == "remove" {
-                                box_container_clone.remove(&package_clone);
-                                if box_container_clone.first_child().is_none() {
-                                    frame_clone.set_child(Some(&no_title_clone));
-                                }
-                            }
-                            dialog.close();
-                        });
-
-                        delete_dialog.present(Some(&package_clone2));
-                    }
-                }
+                let delete_dialog =
+                    handle_delete_numbers(&package_clone, &frame_clone, &no_title_clone);
+                delete_dialog.present(Some(&package_clone));
             });
 
             if info.label != "No data for this package" {
@@ -85,7 +117,7 @@ pub fn create_package_rows(
         .collect()
 }
 
-pub fn refresh_tracking_info(
+fn refresh_tracking_info(
     package_rows: &ListBox,
     nav_view: &NavigationView,
     frame: &Frame,
@@ -167,6 +199,17 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["boxed-list"])
         .build();
 
+    let saved_numbers = load_tracking_numbers();
+    if !saved_numbers.is_empty() {
+        let new_rows = create_package_rows("", &nav_view, &frame, &no_package_title);
+        if !new_rows.is_empty() {
+            frame.set_child(Some(&scrolled_window));
+            for row in new_rows {
+                package_rows.append(&row);
+            }
+        }
+    }
+
     let package_rows_for_refresh = package_rows.clone();
     let frame_for_refresh = frame.clone();
     let nav_view_for_refresh = nav_view.clone();
@@ -195,24 +238,25 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
 
         if !new_rows.is_empty() {
             frame_cloned.set_child(Some(&scrolled_window));
+            let mut current_numbers = Vec::new();
+            let mut row_opt = package_rows_cloned.first_child();
+
+            while let Some(row) = row_opt {
+                if let Some(row) = row.downcast_ref::<ActionRow>() {
+                    current_numbers.push(row.title().to_string());
+                }
+                row_opt = row.next_sibling();
+            }
 
             for new_row in new_rows {
-                let mut exists = false;
-                let mut row_opt = package_rows_cloned.first_child();
-
-                while let Some(row) = row_opt {
-                    if let Some(row) = row.downcast_ref::<ActionRow>() {
-                        if row.title() == new_row.title() {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    row_opt = row.next_sibling();
-                }
-                if !exists {
+                let title = new_row.title().to_string();
+                if !current_numbers.contains(&title) {
+                    current_numbers.push(title);
                     package_rows_cloned.append(&new_row);
                 }
             }
+
+            let _ = save_tracking_numbers(&current_numbers);
         }
     });
 

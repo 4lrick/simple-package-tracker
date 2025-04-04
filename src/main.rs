@@ -1,6 +1,7 @@
 use adw::gtk::{glib, Application};
 use adw::{prelude::*, NavigationPage, NavigationView};
 mod api;
+mod storage;
 mod ui;
 use ui::{
     header::create_header, input::create_input_area, layout::create_main_content,
