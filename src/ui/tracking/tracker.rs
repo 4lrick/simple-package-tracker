@@ -1,129 +1,13 @@
-use crate::api::{process_tracking_numbers, TrackingInfo};
+use super::package_details::create_details_page;
+use crate::api::process_tracking_numbers;
 use adw::{
     gtk::{
-        Align, Box, Button, Frame, Label, ListBox, Orientation, ProgressBar, ScrolledWindow,
-        SelectionMode, Separator, TextView, ToggleButton,
+        Align, Box, Button, Frame, Label, ListBox, Orientation, ScrolledWindow, TextView,
+        ToggleButton,
     },
     prelude::*,
-    ActionRow, AlertDialog, HeaderBar, NavigationPage, NavigationView, ResponseAppearance,
-    StatusPage, ToolbarView,
+    ActionRow, AlertDialog, NavigationView, ResponseAppearance, StatusPage,
 };
-use chrono::DateTime;
-
-pub fn create_events_detail(info: &TrackingInfo, events_box: Box) -> Box {
-    let events_label = Label::builder()
-        .label("History")
-        .css_classes(vec!["title-3"])
-        .halign(Align::Start)
-        .margin_bottom(20)
-        .build();
-
-    let events_list = ListBox::builder()
-        .css_classes(vec!["boxed-list"])
-        .selection_mode(SelectionMode::None)
-        .focusable(false)
-        .can_focus(false)
-        .build();
-
-    let mut sorted_events: Vec<(String, String)> = Vec::new();
-    for event in info.events.iter() {
-        sorted_events.push((event.date.clone(), event.label.clone()));
-        sorted_events.sort_by(|a, b| b.0.cmp(&a.0));
-    }
-
-    for (date, label) in sorted_events {
-        if let Ok(parsed_date) = DateTime::parse_from_str(&date, "%Y-%m-%dT%H:%M:%S%z") {
-            let formatted_date = parsed_date.format("%Y-%m-%d %H:%M").to_string();
-            let row = ActionRow::builder()
-                .title(&label)
-                .subtitle(&formatted_date)
-                .build();
-            events_list.append(&row);
-        }
-    }
-    events_box.append(&events_label);
-    events_box.append(&events_list);
-    return events_box;
-}
-
-pub fn create_details_page(info: &TrackingInfo) -> NavigationPage {
-    let nav_page = NavigationPage::builder()
-        .title("Package Details")
-        .tag(&info.id_ship)
-        .build();
-
-    let toolbar = ToolbarView::new();
-    let header = HeaderBar::new();
-    let details = Box::builder()
-        .orientation(Orientation::Vertical)
-        .halign(Align::Center)
-        .valign(Align::Center)
-        .spacing(20)
-        .build();
-
-    let title = Label::builder()
-        .label(&info.id_ship)
-        .css_classes(vec!["title-1"])
-        .margin_bottom(50)
-        .build();
-
-    let events_box = Box::builder()
-        .orientation(Orientation::Vertical)
-        .spacing(10)
-        .margin_top(20)
-        .build();
-
-    let events_box = create_events_detail(info, events_box);
-    let completed_steps = info.timeline.iter().filter(|t| t.status).count();
-    let total_steps = info.timeline.len().max(1);
-    let progress = completed_steps as f64 / total_steps as f64;
-
-    let progress_bar = ProgressBar::builder()
-        .fraction(progress)
-        .height_request(6)
-        .margin_top(10)
-        .margin_bottom(10)
-        .build();
-
-    let status_product_box = Box::builder()
-        .orientation(Orientation::Horizontal)
-        .spacing(10)
-        .hexpand(true)
-        .build();
-
-    let latest_timeline = info
-        .timeline
-        .iter()
-        .filter(|t| !t.short_label.is_empty())
-        .last();
-
-    if let Some(latest) = latest_timeline {
-        let status_label = Label::builder()
-            .label(&latest.short_label)
-            .halign(Align::Start)
-            .hexpand(true)
-            .build();
-
-        let product_label = Label::builder()
-            .label(&format!("Product: {}", info.product))
-            .halign(Align::End)
-            .build();
-
-        status_product_box.append(&status_label);
-        status_product_box.append(&product_label);
-        details.append(&title);
-        details.append(&status_product_box);
-    }
-
-    details.append(&Separator::new(Orientation::Horizontal));
-    details.append(&progress_bar);
-    details.append(&events_box);
-    toolbar.set_content(Some(&details));
-    toolbar.add_top_bar(&header);
-    nav_page.set_child(Some(&toolbar));
-
-    return nav_page;
-}
 
 pub fn create_package_rows(
     input: &str,
@@ -200,6 +84,36 @@ pub fn create_package_rows(
         .collect()
 }
 
+pub fn refresh_tracking_info(
+    package_rows: &ListBox,
+    nav_view: &NavigationView,
+    frame: &Frame,
+    no_package_title: &StatusPage,
+) {
+    let mut numbers = Vec::new();
+    let mut row_opt = package_rows.first_child();
+
+    while let Some(row) = row_opt {
+        if let Some(row) = row.downcast_ref::<ActionRow>() {
+            numbers.push(row.title().to_string());
+        }
+        row_opt = row.next_sibling();
+    }
+
+    while let Some(child) = package_rows.first_child() {
+        package_rows.remove(&child);
+    }
+
+    if !numbers.is_empty() {
+        let input = numbers.join("\n");
+        let new_rows = create_package_rows(&input, nav_view, frame, no_package_title);
+
+        for row in new_rows {
+            package_rows.append(&row);
+        }
+    }
+}
+
 pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (Button, Box) {
     let text_field_cloned = text_field.clone();
     let package_rows = ListBox::builder().css_classes(vec!["boxed-list"]).build();
@@ -212,10 +126,25 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["suggested-action", "pill"])
         .build();
 
+    let title_container = Box::builder()
+        .orientation(Orientation::Horizontal)
+        .spacing(10)
+        .hexpand(true)
+        .margin_bottom(50)
+        .build();
+
     let tracked_package_title = Label::builder()
         .css_classes(vec!["title-1"])
         .label("Tracked Package(s):")
-        .margin_bottom(50)
+        .hexpand(true)
+        .halign(Align::Start)
+        .build();
+
+    let refresh_button = Button::builder()
+        .icon_name("view-refresh-symbolic")
+        .width_request(40)
+        .height_request(25)
+        .valign(Align::End)
         .build();
 
     let no_package_title = StatusPage::builder()
@@ -235,6 +164,20 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .child(&no_package_title)
         .css_classes(vec!["boxed-list"])
         .build();
+
+    let package_rows_for_refresh = package_rows.clone();
+    let frame_for_refresh = frame.clone();
+    let nav_view_for_refresh = nav_view.clone();
+    let no_package_title_for_refresh = no_package_title.clone();
+
+    refresh_button.connect_clicked(move |_| {
+        refresh_tracking_info(
+            &package_rows_for_refresh,
+            &nav_view_for_refresh,
+            &frame_for_refresh,
+            &no_package_title_for_refresh,
+        );
+    });
 
     let package_area = Box::builder()
         .orientation(Orientation::Vertical)
@@ -271,7 +214,9 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         }
     });
 
-    package_area.append(&tracked_package_title);
+    title_container.append(&tracked_package_title);
+    title_container.append(&refresh_button);
+    package_area.append(&title_container);
     package_area.append(&frame);
 
     return (track_button, package_area);

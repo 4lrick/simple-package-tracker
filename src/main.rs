@@ -4,7 +4,7 @@ mod api;
 mod ui;
 use ui::{
     header::create_header, input::create_input_area, layout::create_main_content,
-    layout::create_main_window, tracker::create_tracking_area,
+    layout::create_main_window, tracking::tracker::create_tracking_area,
 };
 
 fn main() -> glib::ExitCode {
