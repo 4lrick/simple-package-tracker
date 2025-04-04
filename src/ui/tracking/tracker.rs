@@ -8,7 +8,7 @@ use adw::{
         ToggleButton,
     },
     prelude::*,
-    ActionRow, AlertDialog, NavigationView, ResponseAppearance, StatusPage,
+    ActionRow, AlertDialog, NavigationView, ResponseAppearance, Spinner, StatusPage,
 };
 
 fn handle_delete_numbers(
@@ -82,12 +82,43 @@ fn clean_numbers_list(input: &str) -> Vec<String> {
     return all_numbers;
 }
 
+fn show_loading_state() -> Box {
+    let loading_box = Box::builder()
+        .orientation(Orientation::Vertical)
+        .valign(Align::Center)
+        .halign(Align::Center)
+        .vexpand(false)
+        .spacing(10)
+        .height_request(440)
+        .build();
+
+    let loading_spinner = Spinner::builder()
+        .height_request(64)
+        .width_request(64)
+        .vexpand(true)
+        .valign(Align::End)
+        .build();
+
+    let loading_label = Label::builder()
+        .label("Loading packages...")
+        .css_classes(vec!["dim-label"])
+        .vexpand(true)
+        .valign(Align::Start)
+        .build();
+
+    loading_box.append(&loading_spinner);
+    loading_box.append(&loading_label);
+    return loading_box;
+}
+
 async fn create_package_rows(
     input: &str,
     nav_view: &NavigationView,
     frame: &Frame,
     no_package_title: &StatusPage,
 ) {
+    frame.set_child(Some(&show_loading_state()));
+
     let list = ListBox::builder().css_classes(vec!["boxed-list"]).build();
     let all_numbers = clean_numbers_list(input);
 
@@ -145,15 +176,18 @@ async fn refresh_tracking_info(
     nav_view: &NavigationView,
     frame: &Frame,
     no_package_title: &StatusPage,
+    refresh_button: Button,
 ) {
     let numbers = load_tracking_numbers();
 
     if !numbers.is_empty() {
+        frame.set_child(Some(&show_loading_state()));
         let input = numbers.join("\n");
         create_package_rows(&input, nav_view, frame, no_package_title).await;
     } else {
         frame.set_child(Some(no_package_title));
     }
+    refresh_button.set_sensitive(true);
 }
 
 pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (Button, Box) {
@@ -231,14 +265,23 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
     let nav_view_for_refresh = nav_view.clone();
     let no_package_title_for_refresh = no_package_title.clone();
 
-    refresh_button.connect_clicked(move |_| {
+    refresh_button.connect_clicked(move |button| {
+        button.set_sensitive(false);
         let package_rows = package_rows_for_refresh.clone();
         let nav_view = nav_view_for_refresh.clone();
         let frame = frame_for_refresh.clone();
         let no_package_title = no_package_title_for_refresh.clone();
+        let button_clone = button.clone();
 
         glib::spawn_future_local(async move {
-            refresh_tracking_info(&package_rows, &nav_view, &frame, &no_package_title).await;
+            refresh_tracking_info(
+                &package_rows,
+                &nav_view,
+                &frame,
+                &no_package_title,
+                button_clone,
+            )
+            .await;
         });
     });
 
