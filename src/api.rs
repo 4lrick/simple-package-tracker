@@ -19,7 +19,7 @@ pub struct Shipment {
     pub timeline: Vec<Timeline>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Event {
     #[serde(default)]
     pub label: String,
@@ -27,7 +27,7 @@ pub struct Event {
     pub date: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Timeline {
     #[serde(rename = "shortLabel")]
     pub short_label: String,
@@ -35,7 +35,7 @@ pub struct Timeline {
     pub status: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrackingInfo {
     pub id_ship: String,
     pub label: String,
