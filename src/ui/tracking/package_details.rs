@@ -75,6 +75,7 @@ fn create_details_content(info: &TrackingInfo) -> ScrolledWindow {
 
     let progress_bar = ProgressBar::builder()
         .fraction(progress)
+        .tooltip_markup("Timeline progress")
         .height_request(6)
         .margin_top(10)
         .margin_bottom(10)
@@ -126,7 +127,10 @@ fn create_details_content(info: &TrackingInfo) -> ScrolledWindow {
 
 fn create_header(info: &TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
     let header = HeaderBar::new();
-    let refresh_button = Button::builder().icon_name("view-refresh-symbolic").build();
+    let refresh_button = Button::builder()
+        .icon_name("view-refresh-symbolic")
+        .tooltip_markup("Refresh tracking information")
+        .build();
     let info_clone = info.id_ship.clone();
     let nav_page_clone = nav_page.clone();
 

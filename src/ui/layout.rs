@@ -40,6 +40,7 @@ pub fn create_main_window(
 ) -> ApplicationWindow {
     let window = ApplicationWindow::builder()
         .application(&app)
+        .title("Simple Package Tracker")
         .default_width(800)
         .default_height(600)
         .content(&content)

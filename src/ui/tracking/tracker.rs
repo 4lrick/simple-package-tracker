@@ -29,6 +29,7 @@ pub fn create_package_rows(
 
             let delete_btn = ToggleButton::builder()
                 .icon_name("user-trash-symbolic")
+                .tooltip_markup("Delete this package")
                 .valign(Align::Center)
                 .build();
 
@@ -142,6 +143,7 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
 
     let refresh_button = Button::builder()
         .icon_name("view-refresh-symbolic")
+        .tooltip_markup("Refresh tracking information")
         .width_request(40)
         .height_request(25)
         .valign(Align::End)

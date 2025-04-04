@@ -8,6 +8,7 @@ pub fn create_input_area() -> (Frame, TextView) {
         .top_margin(12)
         .wrap_mode(WrapMode::Char)
         .accepts_tab(false)
+        .tooltip_markup("Enter one or more tracking numbers (one per line)")
         .build();
 
     let scroll_window = ScrolledWindow::builder()
