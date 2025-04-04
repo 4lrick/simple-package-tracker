@@ -1,5 +1,6 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
 use adw::{
+    glib,
     gtk::{
         Align, Box, Button, Label, ListBox, Orientation, PolicyType, ProgressBar, ScrolledWindow,
         Separator,
@@ -135,8 +136,12 @@ fn create_header(info: &TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
     let nav_page_clone = nav_page.clone();
 
     refresh_button.connect_clicked(move |_| {
-        if let Some(new_info) = process_tracking_numbers(&info_clone).into_iter().next() {
-            if new_info.label != "No data for this package" {
+        let nav_page_clone = nav_page_clone.clone();
+        let tracking_id = info_clone.clone();
+
+        glib::spawn_future_local(async move {
+            let tracking_info = process_tracking_numbers(&tracking_id).await;
+            if let Some(new_info) = tracking_info.into_iter().next() {
                 let toolbar = ToolbarView::new();
                 let new_header = create_header(&new_info, &nav_page_clone);
                 let details = create_details_content(&new_info);
@@ -145,7 +150,7 @@ fn create_header(info: &TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
                 toolbar.add_top_bar(&new_header);
                 nav_page_clone.set_child(Some(&toolbar));
             }
-        }
+        });
     });
 
     header.pack_start(&refresh_button);

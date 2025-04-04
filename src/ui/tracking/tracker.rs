@@ -1,6 +1,7 @@
 use super::package_details::create_details_page;
 use crate::api::process_tracking_numbers;
 use crate::storage::{load_tracking_numbers, save_tracking_numbers};
+use adw::glib;
 use adw::{
     gtk::{
         Align, Box, Button, Frame, Label, ListBox, Orientation, ScrolledWindow, TextView,
@@ -58,92 +59,100 @@ fn handle_delete_numbers(
     return delete_dialog;
 }
 
-fn create_package_rows(
+fn clean_numbers_list(input: &str) -> Vec<String> {
+    let existing_numbers = load_tracking_numbers();
+    let new_numbers: Vec<String> = input
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .map(String::from)
+        .filter(|num| !existing_numbers.contains(num))
+        .collect();
+
+    let all_numbers = if !input.is_empty() {
+        let mut combined = existing_numbers;
+        combined.extend(new_numbers);
+        combined
+    } else {
+        existing_numbers
+    };
+
+    return all_numbers;
+}
+
+async fn create_package_rows(
     input: &str,
     nav_view: &NavigationView,
     frame: &Frame,
     no_package_title: &StatusPage,
-) -> Vec<ActionRow> {
-    let numbers = if !input.is_empty() {
-        input
-            .lines()
-            .map(str::trim)
-            .filter(|l| !l.is_empty())
-            .map(String::from)
-            .collect::<Vec<_>>()
-    } else {
-        load_tracking_numbers()
-    };
+) {
+    let list = ListBox::builder().css_classes(vec!["boxed-list"]).build();
+    let all_numbers = clean_numbers_list(input);
 
-    let infos = process_tracking_numbers(&numbers.join("\n"));
+    let tracking_info = process_tracking_numbers(&all_numbers.join("\n")).await;
+    let numbers: Vec<String> = tracking_info
+        .iter()
+        .map(|info| info.id_ship.clone())
+        .collect();
+    let _ = save_tracking_numbers(&numbers);
+    let scrolled_window = ScrolledWindow::builder()
+        .child(&list)
+        .height_request(440)
+        .vexpand(false)
+        .build();
+    frame.set_child(Some(&scrolled_window));
+    for info in tracking_info {
+        let package = ActionRow::builder()
+            .title(&info.id_ship)
+            .subtitle(&info.label)
+            .activatable(true)
+            .build();
 
-    infos
-        .into_iter()
-        .map(|info| {
-            let package = ActionRow::builder()
-                .title(&info.id_ship)
-                .subtitle(&info.label)
-                .activatable(true)
-                .css_classes(vec!["property"])
-                .build();
+        let delete_btn = ToggleButton::builder()
+            .icon_name("user-trash-symbolic")
+            .tooltip_markup("Delete this package")
+            .valign(Align::Center)
+            .build();
 
-            let delete_btn = ToggleButton::builder()
-                .icon_name("user-trash-symbolic")
-                .tooltip_markup("Delete this package")
-                .valign(Align::Center)
-                .build();
+        let package_clone = package.clone();
+        let frame_clone = frame.clone();
+        let no_title_clone = no_package_title.clone();
 
-            let package_clone = package.clone();
-            let frame_clone = frame.clone();
-            let no_title_clone = no_package_title.clone();
+        delete_btn.connect_clicked(move |_| {
+            let delete_dialog =
+                handle_delete_numbers(&package_clone, &frame_clone, &no_title_clone);
+            delete_dialog.present(Some(&package_clone));
+        });
 
-            delete_btn.connect_clicked(move |_| {
-                let delete_dialog =
-                    handle_delete_numbers(&package_clone, &frame_clone, &no_title_clone);
-                delete_dialog.present(Some(&package_clone));
-            });
+        let nav_view_clone = nav_view.clone();
+        let nav_page_clone = create_details_page(&info);
+        package.connect_activated(move |_| {
+            nav_view_clone.push(&nav_page_clone);
+        });
 
-            if info.label != "No data for this package" {
-                let nav_view_clone = nav_view.clone();
-                let nav_page_clone = create_details_page(&info);
-                package.connect_activated(move |_| {
-                    nav_view_clone.push(&nav_page_clone);
-                });
-            }
-
-            package.add_suffix(&delete_btn);
-            return package;
-        })
-        .collect()
+        package.add_suffix(&delete_btn);
+        list.append(&package);
+    }
+    if list.first_child().is_none() {
+        frame.set_child(Some(no_package_title));
+    }
 }
 
-fn refresh_tracking_info(
-    package_rows: &ListBox,
+async fn refresh_tracking_info(
+    _package_rows: &ListBox,
     nav_view: &NavigationView,
     frame: &Frame,
     no_package_title: &StatusPage,
 ) {
-    let mut numbers = Vec::new();
-    let mut row_opt = package_rows.first_child();
-
-    while let Some(row) = row_opt {
-        if let Some(row) = row.downcast_ref::<ActionRow>() {
-            numbers.push(row.title().to_string());
-        }
-        row_opt = row.next_sibling();
-    }
-
-    while let Some(child) = package_rows.first_child() {
-        package_rows.remove(&child);
-    }
+    let numbers = load_tracking_numbers();
 
     if !numbers.is_empty() {
         let input = numbers.join("\n");
-        let new_rows = create_package_rows(&input, nav_view, frame, no_package_title);
-
-        for row in new_rows {
-            package_rows.append(&row);
-        }
+        create_package_rows(&input, nav_view, frame, no_package_title).await;
+    } else {
+        frame.set_child(Some(no_package_title));
     }
 }
 
@@ -188,7 +197,7 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .height_request(440)
         .build();
 
-    let scrolled_window = ScrolledWindow::builder()
+    let _scrolled_window = ScrolledWindow::builder()
         .child(&package_rows)
         .height_request(440)
         .vexpand(false)
@@ -199,16 +208,23 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .css_classes(vec!["boxed-list"])
         .build();
 
-    let saved_numbers = load_tracking_numbers();
-    if !saved_numbers.is_empty() {
-        let new_rows = create_package_rows("", &nav_view, &frame, &no_package_title);
-        if !new_rows.is_empty() {
-            frame.set_child(Some(&scrolled_window));
-            for row in new_rows {
-                package_rows.append(&row);
-            }
+    let nav_view_clone = nav_view.clone();
+    let frame_clone = frame.clone();
+    let no_package_title_clone = no_package_title.clone();
+
+    glib::spawn_future_local(async move {
+        let saved_numbers = load_tracking_numbers();
+        if !saved_numbers.is_empty() {
+            let input = saved_numbers.join("\n");
+            create_package_rows(
+                &input,
+                &nav_view_clone,
+                &frame_clone,
+                &no_package_title_clone,
+            )
+            .await;
         }
-    }
+    });
 
     let package_rows_for_refresh = package_rows.clone();
     let frame_for_refresh = frame.clone();
@@ -216,12 +232,14 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
     let no_package_title_for_refresh = no_package_title.clone();
 
     refresh_button.connect_clicked(move |_| {
-        refresh_tracking_info(
-            &package_rows_for_refresh,
-            &nav_view_for_refresh,
-            &frame_for_refresh,
-            &no_package_title_for_refresh,
-        );
+        let package_rows = package_rows_for_refresh.clone();
+        let nav_view = nav_view_for_refresh.clone();
+        let frame = frame_for_refresh.clone();
+        let no_package_title = no_package_title_for_refresh.clone();
+
+        glib::spawn_future_local(async move {
+            refresh_tracking_info(&package_rows, &nav_view, &frame, &no_package_title).await;
+        });
     });
 
     let package_area = Box::builder()
@@ -229,35 +247,18 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
         .margin_top(70)
         .build();
 
-    let package_rows_cloned = package_rows.clone();
+    let _package_rows_cloned = package_rows.clone();
     let frame_cloned = frame.clone();
     track_button.connect_clicked(move |_| {
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
-        let new_rows = create_package_rows(&text, &nav_view, &frame_cloned, &no_package_title);
+        let nav_view = nav_view.clone();
+        let frame_cloned = frame_cloned.clone();
+        let no_package_title = no_package_title.clone();
 
-        if !new_rows.is_empty() {
-            frame_cloned.set_child(Some(&scrolled_window));
-            let mut current_numbers = Vec::new();
-            let mut row_opt = package_rows_cloned.first_child();
-
-            while let Some(row) = row_opt {
-                if let Some(row) = row.downcast_ref::<ActionRow>() {
-                    current_numbers.push(row.title().to_string());
-                }
-                row_opt = row.next_sibling();
-            }
-
-            for new_row in new_rows {
-                let title = new_row.title().to_string();
-                if !current_numbers.contains(&title) {
-                    current_numbers.push(title);
-                    package_rows_cloned.append(&new_row);
-                }
-            }
-
-            let _ = save_tracking_numbers(&current_numbers);
-        }
+        glib::spawn_future_local(async move {
+            create_package_rows(&text, &nav_view, &frame_cloned, &no_package_title).await;
+        });
     });
 
     title_container.append(&tracked_package_title);

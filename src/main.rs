@@ -8,7 +8,8 @@ use ui::{
     layout::create_main_window, tracking::tracker::create_tracking_area,
 };
 
-fn main() -> glib::ExitCode {
+#[tokio::main]
+async fn main() -> glib::ExitCode {
     let app = Application::builder()
         .application_id("org.spt.simplepackagetracker")
         .build();

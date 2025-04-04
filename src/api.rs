@@ -64,48 +64,72 @@ fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
     })
 }
 
-pub fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
-    let mut results = Vec::new();
+pub async fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
+    let numbers: Vec<_> = input
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
 
-    for number in input.lines().map(str::trim).filter(|l| !l.is_empty()) {
-        match fetch_tracking_info(number).map(|body| parse_tracking_info(&body)) {
-            Ok(Some(info)) => results.push(info),
-            Ok(None) => results.push(TrackingInfo {
-                id_ship: number.to_string(),
-                label: "No data for this package".to_string(),
-                product: "Unknown".to_string(),
-                events: Vec::new(),
-                timeline: Vec::new(),
-            }),
-            Err(e) => {
-                eprintln!("API Error {}: {}", number, e);
-                results.push(TrackingInfo {
-                    id_ship: number.to_string(),
-                    label: "Error: ".to_string() + &e.to_string(),
-                    product: "Unknown".to_string(),
-                    events: Vec::new(),
-                    timeline: Vec::new(),
-                });
-            }
+    let mut results = Vec::with_capacity(numbers.len());
+    let mut tasks = Vec::new();
+
+    for chunk in numbers.chunks(10) {
+        let mut chunk_tasks = Vec::new();
+        for &number in chunk {
+            let number = number.to_string();
+            chunk_tasks.push(tokio::spawn(async move {
+                match fetch_tracking_info(&number).await {
+                    Ok(body) => match parse_tracking_info(&body) {
+                        Some(info) => info,
+                        None => TrackingInfo {
+                            id_ship: number,
+                            label: "No data for this package".to_string(),
+                            product: "Unknown".to_string(),
+                            events: Vec::new(),
+                            timeline: Vec::new(),
+                        },
+                    },
+                    Err(e) => TrackingInfo {
+                        id_ship: number,
+                        label: format!("Error: {}", e),
+                        product: "Unknown".to_string(),
+                        events: Vec::new(),
+                        timeline: Vec::new(),
+                    },
+                }
+            }));
+        }
+
+        tasks.extend(chunk_tasks);
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
+
+    for task in tasks {
+        if let Ok(info) = task.await {
+            results.push(info);
         }
     }
 
     return results;
 }
 
-pub fn fetch_tracking_info(tracking_number: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn fetch_tracking_info(
+    tracking_number: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     dotenv().ok();
     let base_url = std::env::var("API_URL").expect("API_URL must be set.");
     let okapi_key = std::env::var("OKAPI_KEY").expect("OKAPI_KEY must be set.");
     let tracking_url = format!("{}/idships/{}", base_url, tracking_number);
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .get(&tracking_url)
         .header("Accept", "application/json")
         .header("X-Okapi-Key", &okapi_key)
-        .send()?;
+        .send()
+        .await?;
 
-    let body = response.text()?;
+    let body = response.text().await?;
     println!("BODY: {}", body);
     Ok(body)
 }
