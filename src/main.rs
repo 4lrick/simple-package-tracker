@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate dotenv_codegen;
+
+
 use adw::gtk::{glib, Application};
 use adw::{prelude::*, NavigationPage, NavigationView};
 mod api;
@@ -11,7 +15,7 @@ use ui::{
 #[tokio::main]
 async fn main() -> glib::ExitCode {
     let app = Application::builder()
-        .application_id("org.spt.simplepackagetracker")
+        .application_id("io.github.alrick.simple_package_tracker")
         .build();
 
     app.connect_startup(|_| {
