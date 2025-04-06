@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.alrick.simple_package_tracker</id>
+  
+  <name>Simple Package Tracker</name>
+  <summary>Track your La Poste packages</summary>
+  
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  
+  <description>
+    <p>
+      Simple Package Tracker helps you keep track of your La Poste packages. View the latest updates on your packages right from your desktop.
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">simple-package-tracker.desktop</launchable>
+</component>
