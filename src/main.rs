@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate dotenv_codegen;
 
-
 use adw::gtk::{glib, Application};
 use adw::{prelude::*, NavigationPage, NavigationView};
 mod api;
@@ -29,7 +28,10 @@ async fn main() -> glib::ExitCode {
         let (track_button, package_rows) = create_tracking_area(text_field, nav_view.clone());
         let content =
             create_main_content(header, tracking_input_window, track_button, package_rows);
-        let root_page = NavigationPage::builder().child(&content).build();
+        let root_page = NavigationPage::builder()
+            .child(&content)
+            .title("Simple Package Tracker")
+            .build();
         let window = create_main_window(app.clone(), nav_view.clone());
 
         nav_view.push(&root_page);
