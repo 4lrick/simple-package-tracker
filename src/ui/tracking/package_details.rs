@@ -2,8 +2,8 @@ use crate::api::{process_tracking_numbers, TrackingInfo};
 use adw::{
     glib,
     gtk::{
-        Align, Box, Button, Label, ListBox, Orientation, PolicyType, ProgressBar, ScrolledWindow,
-        Separator,
+        Align, Box, Button, Image, Label, ListBox, Orientation, PolicyType, ProgressBar,
+        ScrolledWindow, Separator,
     },
     prelude::*,
     ActionRow, HeaderBar, NavigationPage, Spinner, ToolbarView,
@@ -205,6 +205,27 @@ fn create_header(info: TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
             }
         });
     });
+
+    if let Some(url) = info.url {
+        let image = Image::builder()
+            .resource("/io/github/alrick/simple_package_tracker/icons/external-link-symbolic.svg")
+            .build();
+
+        let url_button = Button::builder()
+            .child(&image)
+            .css_classes(vec!["flat"])
+            .tooltip_markup("Open tracking page in browser")
+            .build();
+
+        let url_clone = url.clone();
+        url_button.connect_clicked(move |_| {
+            if let Err(e) = open::that(&url_clone) {
+                eprintln!("Failed to open URL: {}", e);
+            }
+        });
+
+        header.pack_end(&url_button);
+    }
 
     header.pack_start(&refresh_button);
     return header;

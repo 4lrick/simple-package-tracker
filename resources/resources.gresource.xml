@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/io/github/alrick/simple_package_tracker">
+    <file>icons/external-link-symbolic.svg</file>
+  </gresource>
+</gresources>
+

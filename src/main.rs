@@ -2,7 +2,7 @@
 extern crate dotenv_codegen;
 
 use adw::gtk::{glib, Application};
-use adw::{prelude::*, NavigationPage, NavigationView};
+use adw::{gio, prelude::*, NavigationPage, NavigationView};
 mod api;
 mod storage;
 mod ui;
@@ -13,6 +13,9 @@ use ui::{
 
 #[tokio::main]
 async fn main() -> glib::ExitCode {
+    gio::resources_register_include!("simple_package_tracker.gresource")
+        .expect("Failed to register embedded resources");
+
     let app = Application::builder()
         .application_id("io.github.alrick.simple_package_tracker")
         .build();

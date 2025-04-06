@@ -16,6 +16,8 @@ pub struct Shipment {
     pub product: String,
     #[serde(default)]
     pub timeline: Vec<Timeline>,
+    #[serde(default)]
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -41,6 +43,7 @@ pub struct TrackingInfo {
     pub product: String,
     pub events: Vec<Event>,
     pub timeline: Vec<Timeline>,
+    pub url: Option<String>,
 }
 
 fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
@@ -60,6 +63,7 @@ fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
         product: shipment.product.clone(),
         events: shipment.event,
         timeline: shipment.timeline,
+        url: shipment.url,
     })
 }
 
@@ -87,6 +91,7 @@ pub async fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
                             product: "Unknown".to_string(),
                             events: Vec::new(),
                             timeline: Vec::new(),
+                            url: None,
                         },
                     },
                     Err(e) => TrackingInfo {
@@ -95,6 +100,7 @@ pub async fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
                         product: "Unknown".to_string(),
                         events: Vec::new(),
                         timeline: Vec::new(),
+                        url: None,
                     },
                 }
             }));
