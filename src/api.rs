@@ -1,4 +1,3 @@
-use dotenv::dotenv;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -117,19 +116,17 @@ pub async fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
 pub async fn fetch_tracking_info(
     tracking_number: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    dotenv().ok();
-    let base_url = std::env::var("API_URL").expect("API_URL must be set.");
-    let okapi_key = std::env::var("OKAPI_KEY").expect("OKAPI_KEY must be set.");
+    let base_url = dotenv!("API_URL");
+    let okapi_key = dotenv!("OKAPI_KEY");
     let tracking_url = format!("{}/idships/{}", base_url, tracking_number);
     let client = reqwest::Client::new();
     let response = client
         .get(&tracking_url)
         .header("Accept", "application/json")
-        .header("X-Okapi-Key", &okapi_key)
+        .header("X-Okapi-Key", okapi_key)
         .send()
         .await?;
 
     let body = response.text().await?;
-    println!("BODY: {}", body);
     Ok(body)
 }

@@ -8,6 +8,7 @@ adw = { version = "0.7.2", package = "libadwaita", features = ["v1_6"] }
 chrono = "0.4.40"
 directories = "6.0.0"
 dotenv = "0.15.0"
+dotenv_codegen = "0.15"
 reqwest = { version = "0.12.15", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
