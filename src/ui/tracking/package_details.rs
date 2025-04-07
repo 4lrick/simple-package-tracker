@@ -1,5 +1,6 @@
 use crate::api::{process_tracking_numbers, TrackingInfo};
 use adw::{
+    gio::prelude::*,
     glib,
     gtk::{
         Align, Box, Button, Image, Label, ListBox, Orientation, PolicyType, ProgressBar,
@@ -8,6 +9,7 @@ use adw::{
     prelude::*,
     ActionRow, HeaderBar, NavigationPage, Spinner, ToolbarView,
 };
+
 use chrono::DateTime;
 
 pub fn create_events_history(info: &TrackingInfo, events_box: Box) -> Box {
@@ -207,9 +209,28 @@ fn create_header(info: TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
     });
 
     if let Some(url) = info.url {
-        let image = Image::builder()
-            .resource("/io/github/alrick/simple_package_tracker/icons/external-link-symbolic.svg")
-            .build();
+        let style_manager = adw::StyleManager::default();
+        let image = Image::new();
+
+        let update_icon = {
+            let image = image.clone();
+            let style_manager = style_manager.clone();
+            move || {
+                let icon_name = if style_manager.is_dark() {
+                    "/io/github/alrick/simple_package_tracker/icons/external-link-dark-symbolic.svg"
+                } else {
+                    "/io/github/alrick/simple_package_tracker/icons/external-link-light-symbolic.svg"
+                };
+                image.set_resource(Some(icon_name));
+            }
+        };
+
+        update_icon();
+
+        let style_manager_clone = style_manager.clone();
+        style_manager_clone.connect_notify_local(Some("dark"), move |_, _| {
+            update_icon();
+        });
 
         let url_button = Button::builder()
             .child(&image)
