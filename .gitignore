@@ -1,2 +1,8 @@
-/target
 .env
+.flatpak-builder
+build
+build-dir
+repo
+repo-dir
+debug/
+target/
