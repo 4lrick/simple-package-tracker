@@ -42,7 +42,7 @@ pub fn create_main_window(
         .application(&app)
         .title("Simple Package Tracker")
         .default_width(800)
-        .default_height(600)
+        .default_height(1100)
         .content(&content)
         .build();
 
