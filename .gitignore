@@ -1,4 +1,5 @@
 .env
+*.flatpak
 .flatpak-builder
 build
 build-dir
