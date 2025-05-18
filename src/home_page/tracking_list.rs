@@ -304,15 +304,18 @@ pub fn create_tracking_area(text_field: TextView, nav_view: NavigationView) -> (
 
     let _package_rows_cloned = package_rows.clone();
     let frame_cloned = frame.clone();
-    track_button.connect_clicked(move |_| {
+    track_button.connect_clicked(move |button| {
+        button.set_sensitive(false);
         let tf_buff = text_field_cloned.buffer();
         let text = tf_buff.text(&tf_buff.start_iter(), &tf_buff.end_iter(), false);
         let nav_view = nav_view.clone();
         let frame_cloned = frame_cloned.clone();
         let no_package_title = no_package_title.clone();
+        let button_clone = button.clone();
 
         glib::spawn_future_local(async move {
             create_package_rows(&text, &nav_view, &frame_cloned, &no_package_title).await;
+            button_clone.set_sensitive(true);
         });
     });
 
