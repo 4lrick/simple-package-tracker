@@ -138,7 +138,7 @@ pub fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
         error_message: None,
     };
     
-    Some(info)
+    return Some(info);
 }
 
 pub async fn fetch_tracking_info(

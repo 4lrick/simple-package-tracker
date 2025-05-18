@@ -10,9 +10,9 @@ pub struct SavedData {
 
 pub fn get_data_file() -> Option<PathBuf> {
     ProjectDirs::from("io.github", "alrick", "simple_package_tracker").map(|dirs| {
-        let data_dir = dirs.data_dir();
-        fs::create_dir_all(data_dir).ok();
-        let file_path = data_dir.join("saved_numbers.json");
+        let config_dir = dirs.config_dir();
+        fs::create_dir_all(config_dir).ok();
+        let file_path = config_dir.join("saved_numbers.json");
         if !file_path.exists() {
             let default_data = SavedData::default();
             let json = serde_json::to_string(&default_data).unwrap_or_default();
