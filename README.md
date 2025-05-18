@@ -8,11 +8,12 @@ A modern package tracking application built with Rust and libadwaita
 
 ## About
 
-This project was created as a learning experience to explore:
-- 🦀 Rust programming language
-- 🎨 libadwaita for modern GTK applications
-- 📦 Flatpak packaging and distribution
-- 🔌 Integration with the Ship24 API
+This project was created primarily to explore:
+
+- 🦀 Rust
+- 🎨 Libadwaita
+- 📦 Flatpak
+
 
 ## Features
 

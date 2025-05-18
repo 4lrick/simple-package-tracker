@@ -135,8 +135,6 @@ pub struct ApiError {
 pub enum TrackingError {
     #[error("API error: {0}")]
     ApiError(String),
-    #[error("Rate limited. Reset in {0} seconds. Remaining requests: {1}/{2}")]
-    RateLimited(u64, u64, u64),
     #[error("Invalid tracking number: {0}")]
     InvalidTrackingNumber(String),
     #[error("No tracking data available")]

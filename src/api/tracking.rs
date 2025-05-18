@@ -1,5 +1,4 @@
 use super::models::*;
-use super::rate_limiter::get_rate_limiter;
 use dotenvy_macro::dotenv;
 use std::time::Duration;
 
@@ -145,8 +144,6 @@ pub fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
 pub async fn fetch_tracking_info(
     tracking_number: &str,
 ) -> Result<String, TrackingError> {
-    get_rate_limiter().wait_for_next_request().await;
-
     let api_key = dotenv!("API_KEY");
     let tracking_url = format!("{}/trackers/track", BASE_URL);
     let client = reqwest::Client::new();
@@ -166,38 +163,12 @@ pub async fn fetch_tracking_info(
 
     let status = response.status();
     
-    let rate_limit_info = (
-        response.headers()
-            .get("RateLimit-Limit")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok()),
-        response.headers()
-            .get("RateLimit-Remaining")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok()),
-        response.headers()
-            .get("RateLimit-Reset")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.parse::<u64>().ok())
-            .or_else(|| {
-                response.headers()
-                    .get("Retry-After")
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|s| s.parse::<u64>().ok())
-            })
-    );
-
     let body = response.text().await?;
 
     match status {
         reqwest::StatusCode::OK | reqwest::StatusCode::CREATED => Ok(body),
         reqwest::StatusCode::TOO_MANY_REQUESTS => {
-            let (limit, remaining, reset) = rate_limit_info;
-            Err(TrackingError::RateLimited(
-                reset.unwrap_or(60),
-                remaining.unwrap_or(0),
-                limit.unwrap_or(10)
-            ))
+            Err(TrackingError::ApiError("Too many requests. Please try again later.".to_string()))
         },
         reqwest::StatusCode::NOT_FOUND => {
             if let Ok(error_response) = serde_json::from_str::<ApiErrorResponse>(&body) {
@@ -275,10 +246,7 @@ pub async fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
                     },
                     Err(e) => {
                         let error_message = match e {
-                            TrackingError::RateLimited(reset, remaining, limit) => {
-                                format!("Rate limited. Please try again in {} seconds. Remaining requests: {}/{}", 
-                                    reset, remaining, limit)
-                            },
+                            TrackingError::ApiError(msg) => msg,
                             TrackingError::NoTrackingData => "No tracking data available".to_string(),
                             TrackingError::InvalidTrackingNumber(_) => "Invalid tracking number".to_string(),
                             _ => format!("Error: {}", e),
