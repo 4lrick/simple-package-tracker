@@ -3,7 +3,7 @@ Version=1.0
 Type=Application
 
 Name=Simple Package Tracker
-Comment=Track your La Poste packages
+Comment=Track your packages from multiple carriers
 Categories=Utility;GTK;
 
 Icon=io.github.alrick.simple_package_tracker
