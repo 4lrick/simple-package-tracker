@@ -1,4 +1,5 @@
-use crate::api::{process_tracking_numbers, TrackingInfo};
+use crate::api::tracking::process_tracking_numbers;
+use crate::api::models::TrackingInfo;
 use adw::{
     gio::prelude::*,
     glib,
@@ -9,8 +10,7 @@ use adw::{
     prelude::*,
     ActionRow, HeaderBar, NavigationPage, Spinner, ToolbarView,
 };
-
-use chrono::DateTime;
+use chrono::Local;
 
 pub fn create_events_history(info: &TrackingInfo, events_box: Box) -> Box {
     let events_label = Label::builder()
@@ -26,21 +26,20 @@ pub fn create_events_history(info: &TrackingInfo, events_box: Box) -> Box {
         .can_focus(false)
         .build();
 
-    let mut sorted_events: Vec<(String, String)> = Vec::new();
-    for event in info.events.iter() {
-        sorted_events.push((event.date.clone(), event.label.clone()));
-        sorted_events.sort_by(|a, b| b.0.cmp(&a.0));
+    let mut sorted_events = Vec::new();
+    for event in &info.events {
+        sorted_events.push((event.occurrence_datetime, event.status.clone().unwrap_or_default()));
     }
+    sorted_events.sort_by(|a, b| b.0.cmp(&a.0));
 
     for (date, label) in sorted_events {
-        if let Ok(parsed_date) = DateTime::parse_from_str(&date, "%Y-%m-%dT%H:%M:%S%z") {
-            let formatted_date = parsed_date.format("%Y-%m-%d %H:%M").to_string();
-            let row = ActionRow::builder()
-                .title(&label)
-                .subtitle(&formatted_date)
-                .build();
-            events_list.append(&row);
-        }
+        let local_date = date.with_timezone(&Local);
+        let formatted_date = local_date.format("%Y-%m-%d %H:%M").to_string();
+        let row = ActionRow::builder()
+            .title(&label)
+            .subtitle(&formatted_date)
+            .build();
+        events_list.append(&row);
     }
     events_box.append(&events_label);
     events_box.append(&events_list);
@@ -102,9 +101,15 @@ fn create_details_content(info: &TrackingInfo) -> ScrolledWindow {
 
     details.append(&title);
 
-    if info.label == "No data for this package" {
+    if info.has_error || info.events.is_empty() {
+        let error_message = if let Some(msg) = &info.error_message {
+            msg.clone()
+        } else {
+            "No tracking information available for this package".to_string()
+        };
+        
         let no_data_label = Label::builder()
-            .label("No tracking information available for this package")
+            .label(&error_message)
             .css_classes(vec!["dim-label"])
             .margin_top(20)
             .build();
@@ -149,7 +154,7 @@ fn create_details_content(info: &TrackingInfo) -> ScrolledWindow {
                 .build();
 
             let product_label = Label::builder()
-                .label(&format!("Product: {}", info.product))
+                .label(&format!("Status: {}", info.status))
                 .halign(Align::End)
                 .hexpand(true)
                 .build();
@@ -210,7 +215,9 @@ fn create_header(info: TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
 
     if let Some(url) = info.url {
         let style_manager = adw::StyleManager::default();
-        let image = Image::new();
+        let image = Image::builder()
+            .tooltip_markup("Open tracking page in browser")
+            .build();
 
         let update_icon = {
             let image = image.clone();

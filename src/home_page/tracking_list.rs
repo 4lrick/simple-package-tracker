@@ -1,5 +1,5 @@
-use super::package_details::create_details_page;
-use crate::api::process_tracking_numbers;
+use crate::details_page::details::create_details_page;
+use crate::api::tracking::process_tracking_numbers;
 use crate::storage::{load_tracking_numbers, save_tracking_numbers};
 use adw::glib;
 use adw::{
@@ -135,9 +135,21 @@ async fn create_package_rows(
         .build();
     frame.set_child(Some(&scrolled_window));
     for info in tracking_info {
+        let subtitle = if info.has_error {
+            if let Some(error) = &info.error_message {
+                error.clone()
+            } else {
+                "No tracking data available".to_string()
+            }
+        } else if info.events.is_empty() {
+            "No tracking data available".to_string()
+        } else {
+            info.label.clone()
+        };
+
         let package = ActionRow::builder()
             .title(&info.id_ship)
-            .subtitle(&info.label)
+            .subtitle(&subtitle)
             .activatable(true)
             .build();
 
