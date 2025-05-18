@@ -30,11 +30,21 @@ This project was created as a learning experience to explore:
 - GTK development libraries
 - Flatpak development tools
 
+### API Key Setup
+
+This application requires a Ship24 API key to function. You'll need to:
+
+1. Get your API key from [Ship24](https://docs.ship24.com/getting-started)
+2. Create a `.env` file in the project root with your API key:
+```bash
+API_KEY=your_api_key_here
+```
+
 ### Building from Source
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/suntyx/simple-package-tracker.git
+git clone https://github.com/4lrick/simple-package-tracker.git
 cd simple-package-tracker
 ```
 
