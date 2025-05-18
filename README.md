@@ -69,7 +69,7 @@ flatpak uninstall io.github.alrick.simple_package_tracker
 
 ## License
 
-This project is licensed under the [GNU General Public License v3.0](LICENSE.txt).
+This project is licensed under the [MIT License](LICENSE.txt).
 
 ## Acknowledgments
 
