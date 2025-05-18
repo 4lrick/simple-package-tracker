@@ -60,16 +60,9 @@ cargo run
 
 ### Flatpak Development
 
-You can either:
-
-1. Build and install from source:
+Build and install from source:
 ```bash
 flatpak-builder --user --install build-dir flatpak/manifest.json
-```
-
-2. Or install directly from the Flatpak reference file in the [releases](https://github.com/4lrick/simple-package-tracker/releases):
-```bash
-flatpak install --user simple-package-tracker.flatpak
 ```
 
 To uninstall:
