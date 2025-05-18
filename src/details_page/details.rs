@@ -1,4 +1,4 @@
-use crate::api::tracking::process_tracking_numbers;
+use crate::api::tracking::TrackingClient;
 use crate::api::models::TrackingInfo;
 use adw::{
     gio::prelude::*,
@@ -200,7 +200,8 @@ fn create_header(info: TrackingInfo, nav_page: &NavigationPage) -> HeaderBar {
         }
 
         glib::spawn_future_local(async move {
-            let tracking_info = process_tracking_numbers(&info_id_clone).await;
+            let client = TrackingClient::new();
+            let tracking_info = client.process_tracking_numbers(&info_id_clone).await;
             if let Some(new_info) = tracking_info.into_iter().next() {
                 let toolbar = ToolbarView::new();
                 let new_header = create_header(new_info.clone(), &nav_page_clone);

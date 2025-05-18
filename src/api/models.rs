@@ -133,18 +133,10 @@ pub struct ApiError {
 
 #[derive(Debug, Error)]
 pub enum TrackingError {
-    #[error("API error: {0}")]
-    ApiError(String),
-    #[error("Invalid tracking number: {0}")]
-    InvalidTrackingNumber(String),
-    #[error("No tracking data available")]
-    NoTrackingData,
     #[error("Network error: {0}")]
     NetworkError(#[from] reqwest::Error),
     #[error("Parse error: {0}")]
     ParseError(#[from] serde_json::Error),
-    #[error("Server error: {0}")]
-    ServerError(String),
 }
 
 pub fn deserialize_datetime<'de, D>(deserializer: D) -> Result<chrono::DateTime<chrono::Utc>, D::Error>

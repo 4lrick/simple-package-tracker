@@ -1,5 +1,5 @@
 use crate::details_page::details::create_details_page;
-use crate::api::tracking::process_tracking_numbers;
+use crate::api::tracking::TrackingClient;
 use crate::storage::{load_tracking_numbers, save_tracking_numbers};
 use adw::glib;
 use adw::{
@@ -122,7 +122,8 @@ async fn create_package_rows(
     let list = ListBox::builder().css_classes(vec!["boxed-list"]).build();
     let all_numbers = clean_numbers_list(input);
 
-    let tracking_info = process_tracking_numbers(&all_numbers.join("\n")).await;
+    let client = TrackingClient::new();
+    let tracking_info = client.process_tracking_numbers(&all_numbers.join("\n")).await;
     let numbers: Vec<String> = tracking_info
         .iter()
         .map(|info| info.id_ship.clone())

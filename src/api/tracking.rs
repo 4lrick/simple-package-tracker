@@ -1,15 +1,146 @@
 use super::models::*;
 use dotenvy_macro::dotenv;
 use std::time::Duration;
+use std::sync::Arc;
+use reqwest::Client;
 
 const SHIP24_TRACKING_URL: &str = "https://www.ship24.com/tracking?p=";
 const BASE_URL: &str = "https://api.ship24.com/public/v1";
 
+pub struct TrackingClient {
+    client: Arc<Client>,
+    api_key: String,
+}
+
+impl TrackingClient {
+    pub fn new() -> Self {
+        let client = Client::new();
+        let api_key = dotenv!("API_KEY").to_string();
+        
+        Self {
+            client: Arc::new(client),
+            api_key,
+        }
+    }
+
+    pub async fn process_tracking_numbers(&self, input: &str) -> Vec<TrackingInfo> {
+        let numbers: Vec<_> = input
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        let mut results = Vec::with_capacity(numbers.len());
+        let mut tasks = Vec::new();
+
+        for chunk in numbers.chunks(10) {
+            let mut chunk_tasks = Vec::new();
+            for &number in chunk {
+                let number = number.to_string();
+                let client = self.client.clone();
+                let api_key = self.api_key.clone();
+                chunk_tasks.push(tokio::spawn(async move {
+                    let tracking_url = format!("{}/trackers/track", BASE_URL);
+                    let response = client
+                        .post(&tracking_url)
+                        .header("Authorization", format!("Bearer {}", api_key))
+                        .header("Content-Type", "application/json")
+                        .json(&serde_json::json!({
+                            "trackingNumber": &number,
+                            "settings": {
+                                "restrictTrackingToCourierCode": false
+                            }
+                        }))
+                        .send()
+                        .await;
+
+                    match response {
+                        Ok(resp) => {
+                            let status = resp.status();
+                            match resp.text().await {
+                                Ok(body) => {
+                                    match status {
+                                        reqwest::StatusCode::OK | reqwest::StatusCode::CREATED => {
+                                            match parse_tracking_info(&body) {
+                                                Some(info) => info,
+                                                None => TrackingInfo {
+                                                    id_ship: number.clone(),
+                                                    label: "Status unknown".to_string(),
+                                                    status: "Unknown".to_string(),
+                                                    events: Vec::new(),
+                                                    timeline: Vec::new(),
+                                                    url: None,
+                                                    has_error: true,
+                                                    error_message: Some("Failed to parse tracking data".to_string()),
+                                                },
+                                            }
+                                        },
+                                        _ => {
+                                            let error_message = if let Ok(error_response) = serde_json::from_str::<ApiErrorResponse>(&body) {
+                                                if let Some(error) = error_response.errors.first() {
+                                                    error.message.clone().unwrap_or_else(|| error.code.clone())
+                                                } else {
+                                                    format!("API error: {}", status)
+                                                }
+                                            } else {
+                                                format!("API error: {}", status)
+                                            };
+                                            TrackingInfo {
+                                                id_ship: number,
+                                                label: "Status unknown".to_string(),
+                                                status: "Unknown".to_string(),
+                                                events: Vec::new(),
+                                                timeline: Vec::new(),
+                                                url: None,
+                                                has_error: true,
+                                                error_message: Some(error_message),
+                                            }
+                                        }
+                                    }
+                                },
+                                Err(e) => TrackingInfo {
+                                    id_ship: number,
+                                    label: "Status unknown".to_string(),
+                                    status: "Unknown".to_string(),
+                                    events: Vec::new(),
+                                    timeline: Vec::new(),
+                                    url: None,
+                                    has_error: true,
+                                    error_message: Some(format!("Network error: {}", e)),
+                                },
+                            }
+                        },
+                        Err(e) => TrackingInfo {
+                            id_ship: number,
+                            label: "Status unknown".to_string(),
+                            status: "Unknown".to_string(),
+                            events: Vec::new(),
+                            timeline: Vec::new(),
+                            url: None,
+                            has_error: true,
+                            error_message: Some(format!("Network error: {}", e)),
+                        },
+                    }
+                }));
+            }
+
+            tasks.extend(chunk_tasks);
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+
+        for task in tasks {
+            if let Ok(info) = task.await {
+                results.push(info);
+            }
+        }
+
+        results
+    }
+}
+
 pub fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
     let api_response: ApiResponse = match serde_json::from_str(json) {
-        Ok(resp) => {
-            resp
-        },
+        Ok(resp) => resp,
         Err(e) => {
             return Some(TrackingInfo {
                 id_ship: "".to_string(),
@@ -25,13 +156,10 @@ pub fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
     };
 
     let tracking = match api_response.data.trackings.first() {
-        Some(tracking) => {
-            tracking
-        },
-        None => {
-            return None;
-        },
+        Some(tracking) => tracking,
+        None => return None,
     };
+
     if tracking.events.is_empty() {
         return Some(TrackingInfo {
             id_ship: tracking.tracker.tracking_number.clone(),
@@ -137,144 +265,6 @@ pub fn parse_tracking_info(json: &str) -> Option<TrackingInfo> {
         has_error: false,
         error_message: None,
     };
-    
+
     return Some(info);
-}
-
-pub async fn fetch_tracking_info(
-    tracking_number: &str,
-) -> Result<String, TrackingError> {
-    let api_key = dotenv!("API_KEY");
-    let tracking_url = format!("{}/trackers/track", BASE_URL);
-    let client = reqwest::Client::new();
-    
-    let response = client
-        .post(&tracking_url)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&serde_json::json!({
-            "trackingNumber": tracking_number,
-            "settings": {
-                "restrictTrackingToCourierCode": false
-            }
-        }))
-        .send()
-        .await?;
-
-    let status = response.status();
-    
-    let body = response.text().await?;
-
-    match status {
-        reqwest::StatusCode::OK | reqwest::StatusCode::CREATED => Ok(body),
-        reqwest::StatusCode::TOO_MANY_REQUESTS => {
-            Err(TrackingError::ApiError("Too many requests. Please try again later.".to_string()))
-        },
-        reqwest::StatusCode::NOT_FOUND => {
-            if let Ok(error_response) = serde_json::from_str::<ApiErrorResponse>(&body) {
-                if let Some(error) = error_response.errors.first() {
-                    match error.code.as_str() {
-                        "parcel_not_found" => Err(TrackingError::NoTrackingData),
-                        "tracker_not_found" => Err(TrackingError::InvalidTrackingNumber(tracking_number.to_string())),
-                        _ => Err(TrackingError::ApiError(error.message.clone().unwrap_or_else(|| error.code.clone()))),
-                    }
-                } else {
-                    Err(TrackingError::InvalidTrackingNumber(tracking_number.to_string()))
-                }
-            } else {
-                Err(TrackingError::InvalidTrackingNumber(tracking_number.to_string()))
-            }
-        },
-        reqwest::StatusCode::BAD_REQUEST | 
-        reqwest::StatusCode::UNAUTHORIZED | 
-        reqwest::StatusCode::FORBIDDEN | 
-        reqwest::StatusCode::CONFLICT => {
-            if let Ok(error_response) = serde_json::from_str::<ApiErrorResponse>(&body) {
-                if let Some(error) = error_response.errors.first() {
-                    Err(TrackingError::ApiError(error.message.clone().unwrap_or_else(|| error.code.clone())))
-                } else {
-                    Err(TrackingError::ApiError(format!("API error: {}", status)))
-                }
-            } else {
-                Err(TrackingError::ApiError(format!("API error: {}", status)))
-            }
-        },
-        reqwest::StatusCode::INTERNAL_SERVER_ERROR |
-        reqwest::StatusCode::BAD_GATEWAY |
-        reqwest::StatusCode::SERVICE_UNAVAILABLE |
-        reqwest::StatusCode::GATEWAY_TIMEOUT => {
-            Err(TrackingError::ServerError(format!("Server error: {}", status)))
-        },
-        _ => Err(TrackingError::ApiError(format!("Unexpected status code: {}", status))),
-    }
-}
-
-pub async fn process_tracking_numbers(input: &str) -> Vec<TrackingInfo> {
-    let numbers: Vec<_> = input
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .collect();
-
-    let mut results = Vec::with_capacity(numbers.len());
-    let mut tasks = Vec::new();
-
-    for chunk in numbers.chunks(10) {
-        let mut chunk_tasks = Vec::new();
-        for &number in chunk {
-            let number = number.to_string();
-            chunk_tasks.push(tokio::spawn(async move {
-                match fetch_tracking_info(&number).await {
-                    Ok(body) => {
-                        match parse_tracking_info(&body) {
-                            Some(info) => {
-                                info
-                            },
-                            None => {
-                                TrackingInfo {
-                                    id_ship: number.clone(),
-                                    label: "Status unknown".to_string(),
-                                    status: "Unknown".to_string(),
-                                    events: Vec::new(),
-                                    timeline: Vec::new(),
-                                    url: None,
-                                    has_error: true,
-                                    error_message: Some("Failed to parse tracking data".to_string()),
-                                }
-                            },
-                        }
-                    },
-                    Err(e) => {
-                        let error_message = match e {
-                            TrackingError::ApiError(msg) => msg,
-                            TrackingError::NoTrackingData => "No tracking data available".to_string(),
-                            TrackingError::InvalidTrackingNumber(_) => "Invalid tracking number".to_string(),
-                            _ => format!("Error: {}", e),
-                        };
-                        TrackingInfo {
-                            id_ship: number,
-                            label: "Status unknown".to_string(),
-                            status: "Unknown".to_string(),
-                            events: Vec::new(),
-                            timeline: Vec::new(),
-                            url: None,
-                            has_error: true,
-                            error_message: Some(error_message),
-                        }
-                    },
-                }
-            }));
-        }
-
-        tasks.extend(chunk_tasks);
-        tokio::time::sleep(Duration::from_millis(200)).await;
-    }
-
-    for task in tasks {
-        if let Ok(info) = task.await {
-            results.push(info);
-        }
-    }
-
-    return results;
 } 
